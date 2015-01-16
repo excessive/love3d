@@ -5,20 +5,18 @@
 * love3d.math.intersect.circle_circle(circle1, circle2) [also circles{}?]
 * love3d.math.intersect.line_line(point1, point2, point3, point4) [also points{}?]
 * love3d.math.intersect.ray_triangle(ray, triangle)
-* love3d.math.matrix({matrix})
 * love3d.math.mesh.compute_normal(a, b, c)
 * love3d.math.mesh.average(vertices)
-* love3d.math.quaternion(x, y, z, w)
 * love3d.math.simplex
-* love3d.math.vec2(x, y)
-* love3d.math.vec3(x, y, z)
+	* This needs to be expanded a bit
 * love3d.new_camera(vec3)
 * love3d.new_matrix({matrix})
 * love3d.new_model(model_file)
 * love3d.new_quaternion(x, y, z, w)
 * love3d.new_vec2(x, y)
 * love3d.new_vec3(x, y, z)
-* love3d.physics.* (This will probably end up being a wrapper for the Bullet physics engine)
+* love3d.physics.*
+	* This will probably end up being a wrapper for the Bullet physics engine
 
 
 # Objects
@@ -71,6 +69,27 @@
 
 
 ## Quaternion
+
+* Quaternion:conjugate()
+* Quaternion.dot(a, b)
+* Quaternion:is_imaginary()
+* Quaternion:is_real()
+* Quaternion:is_zero()
+* Quaternion:len()
+* Quaternion:len2()
+* Quaternion.lerp(a, b, s)
+* Quaternion:multiply_right(q)
+* Quaternion:normalize()
+* Quaternion:real()
+* Quaternion:reciprocal()
+* Quaternion.rotation(a, ...)
+* Quaternion:scale(l)
+* Quaternion.slerp(a, b, s)
+* Quaternion:to_axis_angle()
+* Quaternion:to_euler()
+* Quaternion:to_vec3()
+* Quaternion.unit()
+
 
 ## Vec2
 
