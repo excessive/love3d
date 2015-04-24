@@ -12,6 +12,7 @@
 	* Triangle Strips
 * API refinements
 * Include default shaders
+* Port to love 0.10
 
 ## Done
 * Depth Buffer enable/disable
