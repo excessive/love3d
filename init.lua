@@ -2,7 +2,15 @@ local current_folder = (...):gsub('%.init$', '') .. "."
 local cpml = require(current_folder .. "cpml")
 local ffi = require "ffi"
 
-local l3d = {}
+local l3d = {
+	_LICENSE = "Love3D is distributed under the terms of the MIT license. See LICENSE.md.",
+	_URL = "https://github.com/excessive/love3d",
+	_VERSION = "0.0.1",
+	_DESCRIPTION = "A 3D extension for LÖVE."
+}
+
+-- hang onto the original in case we patch over it, we need it!
+local new_canvas = love.graphics.newCanvas
 
 -- from rxi/lume
 local function iscallable(x)
@@ -90,12 +98,15 @@ function l3d.reset()
 	l3d.set_blending()
 end
 
-function l3d.set_blending(enabled)
-	if enabled or enabled == nil then
-		gl.Enable(GL.BLEND)
-	else
-		gl.Disable(GL.BLEND)
-	end
+-- FXAA helpers
+function l3d.get_fxaa_alpha(color)
+	local c_vec = cpml.vec3.isvector(color) and color or cpml.vec3(color)
+	return c_vec:dot(cpml.vec3(0.299, 0.587, 0.114))
+end
+
+function l3d.set_fxaa_background(color)
+	local c_vec = cpml.vec3.isvector(color) and color or cpml.vec3(color)
+	love.graphics.setBackgroundColor(c_vec.x, c_vec.y, c_vec.z, l3d.get_fxaa_alpha(c_vec))
 end
 
 function l3d.set_depth_test(method)
@@ -208,15 +219,104 @@ function l3d.get_matrix()
 	return l3d._state.stack_top.matrix
 end
 
+-- TODO: Port to 0.10's Mesh API instead.
+function l3d.new_triangles(t, offset)
+	offset = offset or cpml.vec3(0, 0, 0)
+	local vb_data = {}
+	local indices = {}
+	for k, v in ipairs(t) do
+		local current = {}
+		table.insert(current, v.x + offset.x)
+		table.insert(current, v.y + offset.y)
+		table.insert(current, v.z + offset.z)
+		table.insert(vb_data, current)
+		table.insert(indices, k)
+	end
+
+	-- HACK: Use the built in vertex positions for UV coords.
+	local m = love.graphics.newMesh(0, nil, "triangles")
+
+	local buffer = love.graphics.newVertexBuffer({ "float", 3 }, vb_data, "static")
+
+	if not buffer then
+		error("Something went terribly wrong creating the vertex buffer.")
+	end
+
+	m:setVertexAttribute("VertexPosition", buffer, 1)
+	m:setVertexMap(indices)
+
+	return m, buffer
+end
+
+-- TODO: Test this to make sure things are properly freed.
+function l3d.new_canvas(width, height, format, msaa, gen_depth)
+	local w, h = width or love.graphics.getWidth(), height or love.graphics.getHeight()
+	local canvas = new_canvas(w, h, format, msaa)
+	if gen_depth and canvas then
+		love.graphics.setCanvas(canvas)
+
+		local depth = ffi.new("unsigned int[1]", 1)
+		gl.GenRenderbuffers(1, depth);
+		gl.BindRenderbuffer(GL.RENDERBUFFER, depth[0]);
+		if msaa > 1 then
+			gl.RenderbufferStorageMultisample(GL.RENDERBUFFER, msaa, GL.DEPTH_COMPONENT24, w, h)
+		else
+			gl.RenderbufferStorage(GL.RENDERBUFFER, GL.DEPTH_COMPONENT24, w, h)
+		end
+		gl.FramebufferRenderbuffer(GL.FRAMEBUFFER, GL.DEPTH_ATTACHMENT, GL.RENDERBUFFER, depth[0])
+		l3d.clear()
+		-- if msaa > 1 then
+		-- 	console.i(string.format("Created canvas with FSAA: %d", msaa))
+		-- else
+		-- 	console.i(string.format("Created canvas without FSAA.", msaa))
+		-- end
+		local status = gl.CheckFramebufferStatus(GL.FRAMEBUFFER)
+		if status ~= GL.FRAMEBUFFER_COMPLETE then
+			console.e("Framebuffer is borked :(")
+		end
+		love.graphics.setCanvas()
+	end
+
+	return canvas
+end
+
+--[[
+-- depth-only canvas!
+local function l3d.new_depth_canvas(w, h)
+	local fbo = ffi.new("unsigned int[1]", 1)
+	gl.GenFramebuffers(1, fbo)
+	gl.BindFramebuffer(GL.FRAMEBUFFER, fbo[0])
+
+	local depth = ffi.new("unsigned int[1]", 1)
+	gl.GenTextures(1, depth)
+	gl.BindTexture(GL.TEXTURE_2D, depth[0])
+	gl.TexImage2D(GL.TEXTURE_2D, 0, GL.DEPTH_COMPONENT24, w, h, 0, GL.DEPTH_COMPONENT, GL.FLOAT, 0)
+	gl.TexParameteri(GL.TEXTURE_2D, GL.TEXTURE_MAG_FILTER, GL.NEAREST)
+	gl.TexParameteri(GL.TEXTURE_2D, GL.TEXTURE_MIN_FILTER, GL.NEAREST)
+	gl.TexParameteri(GL.TEXTURE_2D, GL.TEXTURE_WRAP_S, GL.CLAMP_TO_EDGE)
+	gl.TexParameteri(GL.TEXTURE_2D, GL.TEXTURE_WRAP_T, GL.CLAMP_TO_EDGE)
+
+	gl.FramebufferTexture(GL.FRAMEBUFFER, GL.DEPTH_ATTACHMENT, depth, 0)
+
+	gl.DrawBuffer(GL.NONE) -- No color buffer is drawn to.
+
+	if gl.CheckFramebufferStatus(GL.FRAMEBUFFER) ~= GL.FRAMEBUFFER_COMPLETE then
+		return false
+	end
+
+	return fbo
+end
+--]]
+
 -- This isn't good practice (which is why you must explicitly call it), but
 -- patching various love functions to maintain state here makes things a lot
 -- more pleasant to use.
 function l3d.patch()
+	love.graphics.getLove3D    = function() return l3d end
 	love.graphics.clearDepth   = function() l3d.clear() end
 	love.graphics.setDepthTest = l3d.set_depth_test
 	love.graphics.setCulling   = l3d.set_culling
 	love.graphics.setFrontFace = l3d.set_front_face
-	love.graphics.setBlending  = l3d.set_blending
 	love.graphics.reset        = combine(l3d.reset, love.graphics.reset)
 
 	love.graphics.origin       = combine(l3d.origin, love.graphics.origin)
@@ -228,6 +328,7 @@ function l3d.patch()
 	love.graphics.getMatrix    = l3d.get_matrix
 
 	love.graphics.setShader    = combine(l3d.update_shader, love.graphics.setShader)
+	love.graphics.newCanvas    = l3d.new_canvas
 end
 
 return l3d
