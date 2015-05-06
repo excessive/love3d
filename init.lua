@@ -1,5 +1,5 @@
 local current_folder = (...):gsub('%.init$', '') .. "."
-local cpml = require(current_folder .. "cpml")
+local cpml = require "cpml"
 local ffi = require "ffi"
 
 local l3d = {
@@ -219,33 +219,38 @@ function l3d.get_matrix()
 	return l3d._state.stack_top.matrix
 end
 
--- TODO: Port to 0.10's Mesh API instead.
-function l3d.new_triangles(t, offset)
+-- Create a buffer from a list of vertices (just vec3's)
+-- Offset will offset every vertex by the specified amount, useful for preventing z-fighting.
+-- Optional mesh argument will update the mesh instead of creating a new one.
+-- Specify usage as "dynamic" if you intend to update it frequently.
+function l3d.new_triangles(t, offset, mesh, usage)
 	offset = offset or cpml.vec3(0, 0, 0)
-	local vb_data = {}
-	local indices = {}
+	local data, indices = {}, {}
 	for k, v in ipairs(t) do
 		local current = {}
 		table.insert(current, v.x + offset.x)
 		table.insert(current, v.y + offset.y)
 		table.insert(current, v.z + offset.z)
-		table.insert(vb_data, current)
-		table.insert(indices, k)
+		table.insert(data, current)
+		if not mesh then
+			table.insert(indices, k)
+		end
 	end
 
-	-- HACK: Use the built in vertex positions for UV coords.
-	local m = love.graphics.newMesh(0, nil, "triangles")
+	if not mesh then
+		local layout = {
+			{ "VertexPosition", "float", 3 }
+		}
 
-	local buffer = love.graphics.newVertexBuffer({ "float", 3 }, vb_data, "static")
-
-	if not buffer then
-		error("Something went terribly wrong creating the vertex buffer.")
+		local m = love.graphics.newMesh(layout, data, "triangles", usage or "static")
+		m:setVertexMap(indices)
+		return m
+	else
+		if mesh.setVertices then
+			mesh:setVertices(data)
+		end
+		return mesh
 	end
-
-	m:setVertexAttribute("VertexPosition", buffer, 1)
-	m:setVertexMap(indices)
-
-	return m, buffer
 end
 
 -- TODO: Test this to make sure things are properly freed.
