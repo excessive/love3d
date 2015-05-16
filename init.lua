@@ -2,6 +2,8 @@ local current_folder = (...):gsub('%.init$', '') .. "."
 local cpml = require "cpml"
 local ffi = require "ffi"
 
+local use_gles = false
+
 local l3d = {
 	_LICENSE = "Love3D is distributed under the terms of the MIT license. See LICENSE.md.",
 	_URL = "https://github.com/excessive/love3d",
@@ -56,7 +58,13 @@ function l3d.import(use_monkeypatching)
 	end
 
 	-- Get handles for OpenGL
-	local opengl = require(current_folder .. "opengl")
+	local opengl
+	if ffi.arch == "arm" or ffi.arch == "mips" then
+		use_gles = true
+		opengl = require(current_folder .. "opengles2")
+	else
+		opengl = require(current_folder .. "opengl")
+	end
 	opengl.loader = function(fn)
 		local ptr
 		if sdl_on_windows_tho then
@@ -119,8 +127,13 @@ function l3d.set_depth_test(method)
 		assert(methods[method], "Invalid depth test method.")
 		gl.Enable(GL.DEPTH_TEST)
 		gl.DepthFunc(methods[method] or methods.less)
-		gl.DepthRange(0, 1)
-		gl.ClearDepth(1.0)
+		if use_gles then
+			gl.DepthRangef(0, 1)
+			gl.ClearDepthf(1.0)
+		else
+			gl.DepthRange(0, 1)
+			gl.ClearDepth(1.0)
+		end
 	else
 		gl.Disable(GL.DEPTH_TEST)
 	end
