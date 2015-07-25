@@ -6,6 +6,10 @@ Two ways to use the API are provided. You can either use it as a regular module 
 
 While this can be used to make fully 3D games (and, in fact, we have), it's most reasonable to use it to lift art restrictions so you can make 2.5D games (or put 3D elements in otherwise 2D games). This is not intended to compete with the likes of any big 3D engine like Unreal Engine or Unity.
 
+Depends on LÖVE 0.10 and [CPML](https://github.com/excessive/cpml)
+
+You can load models using [IQM](https://github.com/excessive/iqm).
+
 ## Usage
 ```lua
 require("love3d").import(true)
@@ -31,7 +35,7 @@ function love.draw()
   -- reset
   love.graphics.setShader()
   love.graphics.setDepthTest()
-  
+
   -- now it's safe to draw 2D again.
   love.graphics.print(string.format("FPS: %0.2f (%0.4f)", love.timer.getFPS(), love.timer.getAverageDelta()))
 end
@@ -39,9 +43,7 @@ end
 
 ## Todo
 * Include a useful default shader
-* Include a model & animation loader (IQM is in the works)
 * Add a simple material system
 * Add a simple lighting system
 * Automatically update shader transforms when doing transformations
 * Implement love.graphics.shear, so that our matrix state won't desync if it is used.
-* Oculus Rift support
