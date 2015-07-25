@@ -43,7 +43,10 @@ end
 
 ## Todo
 * Include a useful default shader
-* Add a simple material system
-* Add a simple lighting system
-* Automatically update shader transforms when doing transformations
+* Automatically update shader uniforms when doing transformations
 * Implement love.graphics.shear, so that our matrix state won't desync if it is used.
+* Add debug functionality:
+  * Bounding boxes
+  * Rays
+  * OVR performance/latency hud
+* Add real support for OVR layers.
