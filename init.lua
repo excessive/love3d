@@ -59,7 +59,7 @@ function l3d.import(use_monkeypatching)
 
 	-- Get handles for OpenGL
 	local opengl
-	if ffi.arch == "arm" or ffi.arch == "mips" then
+	if select(1, love.graphics.getRendererInfo()) == "OpenGL ES" then
 		use_gles = true
 		opengl = require(current_folder .. "opengles2")
 	else
