@@ -382,9 +382,10 @@ local ovr = ffi.load(ffi.os == "Windows" and "bin/LibOVR.dll" or error("Oculus r
 
 return setmetatable(
 {
-	init = function()
+	init = function(quality)
 		local cpml = require "cpml"
 		local rift
+		quality = quality or 0.9
 		if ovr.ovr_Initialize(nil) == ovr.ovrSuccess then
 			rift = {}
 			print("Initialized LibOVR")
@@ -402,8 +403,8 @@ return setmetatable(
 
 				rift.hmd = hmd
 
-				local rec_size = ovr.ovrHmd_GetFovTextureSize(hmd, ovr.ovrEye_Left, hmd.DefaultEyeFov[0], 1)
-				local rec_size_r = ovr.ovrHmd_GetFovTextureSize(hmd, ovr.ovrEye_Right, hmd.DefaultEyeFov[1], 1)
+				local rec_size = ovr.ovrHmd_GetFovTextureSize(hmd, ovr.ovrEye_Left, hmd.DefaultEyeFov[0], quality)
+				local rec_size_r = ovr.ovrHmd_GetFovTextureSize(hmd, ovr.ovrEye_Right, hmd.DefaultEyeFov[1], quality)
 				rec_size.w = rec_size.w + rec_size_r.w
 				rec_size.h = math.max(rec_size.h, rec_size_r.h)
 
@@ -454,7 +455,7 @@ return setmetatable(
 					depth = {}
 				}
 				for i=0,1 do
-				local size = ovr.ovrHmd_GetFovTextureSize(hmd, ffi.cast("ovrEyeType", i), hmd.DefaultEyeFov[i], 1)
+				local size = ovr.ovrHmd_GetFovTextureSize(hmd, ffi.cast("ovrEyeType", i), hmd.DefaultEyeFov[i], quality)
 					textures.color[i] = mk_color(hmd, size)
 					textures.depth[i] = mk_depth(size)
 				end
@@ -574,7 +575,7 @@ return setmetatable(
 		if not rift or not rift.hmd then
 			return nil
 		end
-		
+
 		local cpml = require "cpml"
 		local eye = -1
 
