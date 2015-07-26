@@ -548,9 +548,9 @@ local function constant_replace(name, value)
 			num = tonumber(value)
 		end
 	end
-	
+
 	GL[name] = GL[name] or ctype(num)
-	
+
 	return ""
 end
 
@@ -559,22 +559,17 @@ glheader = glheader:gsub("#define GL_(%S+)%s+(%S+)\n", constant_replace)
 ffi.cdef(glheader)
 
 local ffi   = require( "ffi" )
-local libs  = ffi_gles2_libs or {
-   OSX     = { x86 = "bin/OSX/gles2.dylib", x64 = "bin/OSX/gles2.dylib" },
-   Windows  = { x86 = "bin/Windows/x86/libGLESv2.dll", x64 = "bin/Windows/x64/libGLESv2.dll" },
-   Linux    = { x86 = "bin/Linux/x86/libGLESv2.so", x64 = "bin/Linux/x64/libGLESv2.so", arm = "GLESv2" }
-}
 
-local lib   = ffi_OpenGLES2_lib or libs[ffi.os][ffi.arch]
+local lib   = ffi_OpenGLES2_lib or "GLESv2"
 local gles2 = ffi.load( lib )
 
 local gl_mt = {
 	__index = function(self, name)
 		local glname = "gl" .. name
-		local func = gles2[glname]
+		-- local func = gles2[glname]
 		--local procname = "PFNGL" .. name:upper() .. "PROC"
-		--local procname = glname
-		--local func = ffi.cast(procname, openGL.loader(glname))
+		-- local procname = glname
+		-- local func = ffi.cast(procname, openGL.loader(glname))
 		rawset(self, name, func)
 		return func
 	end
