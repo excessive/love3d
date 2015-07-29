@@ -276,18 +276,13 @@ function l3d.new_canvas(width, height, format, msaa, gen_depth)
 		local depth = ffi.new("unsigned int[1]", 1)
 		gl.GenRenderbuffers(1, depth);
 		gl.BindRenderbuffer(GL.RENDERBUFFER, depth[0]);
-		if msaa > 1 then
+		if (msaa and type(msaa) == "boolean") or (type(msaa) == "number" and msaa > 1) then
 			gl.RenderbufferStorageMultisample(GL.RENDERBUFFER, msaa, GL.DEPTH_COMPONENT24, w, h)
 		else
 			gl.RenderbufferStorage(GL.RENDERBUFFER, GL.DEPTH_COMPONENT24, w, h)
 		end
 		gl.FramebufferRenderbuffer(GL.FRAMEBUFFER, GL.DEPTH_ATTACHMENT, GL.RENDERBUFFER, depth[0])
 		l3d.clear()
-		-- if msaa > 1 then
-		-- 	console.i(string.format("Created canvas with FSAA: %d", msaa))
-		-- else
-		-- 	console.i(string.format("Created canvas without FSAA.", msaa))
-		-- end
 		local status = gl.CheckFramebufferStatus(GL.FRAMEBUFFER)
 		if status ~= GL.FRAMEBUFFER_COMPLETE then
 			console.e("Framebuffer is borked :(")
