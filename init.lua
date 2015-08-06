@@ -160,7 +160,7 @@ end
 function l3d.set_depth_test(method)
 	if method then
 		local methods = {
-			greater = GL.GREATER,
+			greater = GL.GEQUAL,
 			equal = GL.EQUAL,
 			less = GL.LEQUAL
 		}
