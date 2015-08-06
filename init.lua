@@ -45,16 +45,49 @@ end
 
 -- import all the GL function pointers (using SDL)
 function l3d.import(use_monkeypatching)
-	ffi.cdef([[void *SDL_GL_GetProcAddress(const char *proc);]])
+	ffi.cdef([[
+		typedef enum {
+			SDL_GL_RED_SIZE,
+			SDL_GL_GREEN_SIZE,
+			SDL_GL_BLUE_SIZE,
+			SDL_GL_ALPHA_SIZE,
+			SDL_GL_BUFFER_SIZE,
+			SDL_GL_DOUBLEBUFFER,
+			SDL_GL_DEPTH_SIZE,
+			SDL_GL_STENCIL_SIZE,
+			SDL_GL_ACCUM_RED_SIZE,
+			SDL_GL_ACCUM_GREEN_SIZE,
+			SDL_GL_ACCUM_BLUE_SIZE,
+			SDL_GL_ACCUM_ALPHA_SIZE,
+			SDL_GL_STEREO,
+			SDL_GL_MULTISAMPLEBUFFERS,
+			SDL_GL_MULTISAMPLESAMPLES,
+			SDL_GL_ACCELERATED_VISUAL,
+			SDL_GL_RETAINED_BACKING,
+			SDL_GL_CONTEXT_MAJOR_VERSION,
+			SDL_GL_CONTEXT_MINOR_VERSION,
+			SDL_GL_CONTEXT_EGL,
+			SDL_GL_CONTEXT_FLAGS,
+			SDL_GL_CONTEXT_PROFILE_MASK,
+			SDL_GL_SHARE_WITH_CURRENT_CONTEXT,
+			SDL_GL_FRAMEBUFFER_SRGB_CAPABLE,
+			SDL_GL_CONTEXT_RELEASE_BEHAVIOR
+		} SDL_GLattr;
+		void *SDL_GL_GetProcAddress(const char *proc);
+		int SDL_GL_GetAttribute(SDL_GLattr attr, int* value);
+	]])
 
 	-- Windows needs to use an external SDL
-	local sdl_on_windows_tho
+	local sdl
 	if love.system.getOS() == "Windows" then
-		if love and love.system.getOS() == "Windows" and love.filesystem.isDirectory("bin") then
-			sdl_on_windows_tho = ffi.load("bin/SDL2")
+		if love.filesystem.isDirectory("bin") then
+			sdl = ffi.load("bin/SDL2")
 		else
-			sdl_on_windows_tho = ffi.load("SDL2")
+			sdl = ffi.load("SDL2")
 		end
+	else
+		-- On other systems, we get the symbols for free.
+		sdl = ffi.C
 	end
 
 	-- Get handles for OpenGL
@@ -66,20 +99,19 @@ function l3d.import(use_monkeypatching)
 		opengl = require(current_folder .. "opengl")
 	end
 	opengl.loader = function(fn)
-		local ptr
-		if sdl_on_windows_tho then
-			ptr = sdl_on_windows_tho.SDL_GL_GetProcAddress(fn)
-		else
-			ptr = ffi.C.SDL_GL_GetProcAddress(fn)
-		end
-
-		return ptr
+		return sdl.SDL_GL_GetProcAddress(fn)
 	end
 	opengl:import()
 
 	l3d._state = {}
 	l3d._state.stack = {}
 	l3d.push("all")
+
+	local out = ffi.new("int[?]", 1)
+	sdl.SDL_GL_GetAttribute(sdl.SDL_GL_DEPTH_SIZE, out)
+
+	assert(out[0] > 8, "We didn't get a depth buffer, bad things will happen.")
+	print(string.format("Depth bits: %d", out[0]))
 
 	if use_monkeypatching then
 		l3d.patch()
@@ -101,6 +133,7 @@ end
 
 function l3d.reset()
 	l3d.set_depth_test()
+	l3d.set_depth_write()
 	l3d.set_culling()
 	l3d.set_front_face()
 	l3d.set_blending()
@@ -117,16 +150,23 @@ function l3d.set_fxaa_background(color)
 	love.graphics.setBackgroundColor(c_vec.x, c_vec.y, c_vec.z, l3d.get_fxaa_alpha(c_vec))
 end
 
+function l3d.set_depth_write(mask)
+	if mask then
+		assert(type(mask) == "boolean", "set_depth_write expects one parameter of type 'boolean'")
+	end
+	gl.DepthMask(mask or true)
+end
+
 function l3d.set_depth_test(method)
 	if method then
 		local methods = {
 			greater = GL.GREATER,
 			equal = GL.EQUAL,
-			less = GL.LESS
+			less = GL.LEQUAL
 		}
 		assert(methods[method], "Invalid depth test method.")
 		gl.Enable(GL.DEPTH_TEST)
-		gl.DepthFunc(methods[method] or methods.less)
+		gl.DepthFunc(methods[method])
 		if use_gles then
 			gl.DepthRangef(0, 1)
 			gl.ClearDepthf(1.0)
@@ -268,6 +308,9 @@ end
 
 -- TODO: Test this to make sure things are properly freed.
 function l3d.new_canvas(width, height, format, msaa, gen_depth)
+	if use_gles then
+		return
+	end
 	local w, h = width or love.graphics.getWidth(), height or love.graphics.getHeight()
 	local canvas = new_canvas(w, h, format, msaa)
 	if gen_depth and canvas then
@@ -276,17 +319,20 @@ function l3d.new_canvas(width, height, format, msaa, gen_depth)
 		local depth = ffi.new("unsigned int[1]", 1)
 		gl.GenRenderbuffers(1, depth);
 		gl.BindRenderbuffer(GL.RENDERBUFFER, depth[0]);
-		if (msaa and type(msaa) == "boolean") or (type(msaa) == "number" and msaa > 1) then
-			gl.RenderbufferStorageMultisample(GL.RENDERBUFFER, msaa, GL.DEPTH_COMPONENT24, w, h)
+		if not use_gles and (type(msaa) == "number" and msaa > 1) then
+			gl.RenderbufferStorageMultisample(GL.RENDERBUFFER, msaa, use_gles and GL.DEPTH_COMPONENT16 or GL.DEPTH_COMPONENT24, w, h)
 		else
-			gl.RenderbufferStorage(GL.RENDERBUFFER, GL.DEPTH_COMPONENT24, w, h)
+			gl.RenderbufferStorage(GL.RENDERBUFFER, use_gles and GL.DEPTH_COMPONENT16 or GL.DEPTH_COMPONENT24, w, h)
 		end
 		gl.FramebufferRenderbuffer(GL.FRAMEBUFFER, GL.DEPTH_ATTACHMENT, GL.RENDERBUFFER, depth[0])
-		l3d.clear()
 		local status = gl.CheckFramebufferStatus(GL.FRAMEBUFFER)
 		if status ~= GL.FRAMEBUFFER_COMPLETE then
-			console.e("Framebuffer is borked :(")
+			error(string.format("Framebuffer is borked :( (%d)", status))
 		end
+		if gl.GetError() ~= GL.NO_ERROR then
+			error("You fucking broke GL you asshole.")
+		end
+		l3d.clear()
 		love.graphics.setCanvas()
 	end
 
@@ -325,23 +371,24 @@ end
 -- patching various love functions to maintain state here makes things a lot
 -- more pleasant to use.
 function l3d.patch()
-	love.graphics.getLove3D    = function() return l3d end
-	love.graphics.clearDepth   = function() l3d.clear() end
-	love.graphics.setDepthTest = l3d.set_depth_test
-	love.graphics.setCulling   = l3d.set_culling
-	love.graphics.setFrontFace = l3d.set_front_face
-	love.graphics.reset        = combine(l3d.reset, love.graphics.reset)
+	love.graphics.getLove3D     = function() return l3d end
+	love.graphics.clearDepth    = function() l3d.clear() end
+	love.graphics.setDepthTest  = l3d.set_depth_test
+	love.graphics.setDepthWrite = l3d.set_depth_write
+	love.graphics.setCulling    = l3d.set_culling
+	love.graphics.setFrontFace  = l3d.set_front_face
+	love.graphics.reset         = combine(l3d.reset, love.graphics.reset)
 
-	love.graphics.origin       = combine(l3d.origin, love.graphics.origin)
-	love.graphics.pop          = combine(l3d.pop, love.graphics.pop)
-	love.graphics.push         = combine(l3d.push, love.graphics.push)
-	love.graphics.rotate       = combine(l3d.rotate, love.graphics.rotate)
-	love.graphics.scale        = combine(l3d.scale, love.graphics.scale)
-	love.graphics.translate    = combine(l3d.translate, love.graphics.translate)
-	love.graphics.getMatrix    = l3d.get_matrix
+	love.graphics.origin        = combine(l3d.origin, love.graphics.origin)
+	love.graphics.pop           = combine(l3d.pop, love.graphics.pop)
+	love.graphics.push          = combine(l3d.push, love.graphics.push)
+	love.graphics.rotate        = combine(l3d.rotate, love.graphics.rotate)
+	love.graphics.scale         = combine(l3d.scale, love.graphics.scale)
+	love.graphics.translate     = combine(l3d.translate, love.graphics.translate)
+	love.graphics.getMatrix     = l3d.get_matrix
 
-	love.graphics.setShader    = combine(l3d.update_shader, love.graphics.setShader)
-	love.graphics.newCanvas    = l3d.new_canvas
+	love.graphics.setShader     = combine(l3d.update_shader, love.graphics.setShader)
+	love.graphics.newCanvas     = l3d.new_canvas
 end
 
 return l3d
