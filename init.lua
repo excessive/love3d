@@ -47,31 +47,7 @@ end
 function l3d.import(use_monkeypatching)
 	ffi.cdef([[
 		typedef enum {
-			SDL_GL_RED_SIZE,
-			SDL_GL_GREEN_SIZE,
-			SDL_GL_BLUE_SIZE,
-			SDL_GL_ALPHA_SIZE,
-			SDL_GL_BUFFER_SIZE,
-			SDL_GL_DOUBLEBUFFER,
-			SDL_GL_DEPTH_SIZE,
-			SDL_GL_STENCIL_SIZE,
-			SDL_GL_ACCUM_RED_SIZE,
-			SDL_GL_ACCUM_GREEN_SIZE,
-			SDL_GL_ACCUM_BLUE_SIZE,
-			SDL_GL_ACCUM_ALPHA_SIZE,
-			SDL_GL_STEREO,
-			SDL_GL_MULTISAMPLEBUFFERS,
-			SDL_GL_MULTISAMPLESAMPLES,
-			SDL_GL_ACCELERATED_VISUAL,
-			SDL_GL_RETAINED_BACKING,
-			SDL_GL_CONTEXT_MAJOR_VERSION,
-			SDL_GL_CONTEXT_MINOR_VERSION,
-			SDL_GL_CONTEXT_EGL,
-			SDL_GL_CONTEXT_FLAGS,
-			SDL_GL_CONTEXT_PROFILE_MASK,
-			SDL_GL_SHARE_WITH_CURRENT_CONTEXT,
-			SDL_GL_FRAMEBUFFER_SRGB_CAPABLE,
-			SDL_GL_CONTEXT_RELEASE_BEHAVIOR
+			SDL_GL_DEPTH_SIZE = 6
 		} SDL_GLattr;
 		void *SDL_GL_GetProcAddress(const char *proc);
 		int SDL_GL_GetAttribute(SDL_GLattr attr, int* value);
@@ -80,7 +56,7 @@ function l3d.import(use_monkeypatching)
 	-- Windows needs to use an external SDL
 	local sdl
 	if love.system.getOS() == "Windows" then
-		if love.filesystem.isDirectory("bin") then
+		if not love.filesystem.isFused() and love.filesystem.isFile("bin/SDL2.dll") then
 			sdl = ffi.load("bin/SDL2")
 		else
 			sdl = ffi.load("SDL2")
@@ -136,7 +112,6 @@ function l3d.reset()
 	l3d.set_depth_write()
 	l3d.set_culling()
 	l3d.set_front_face()
-	l3d.set_blending()
 end
 
 -- FXAA helpers
