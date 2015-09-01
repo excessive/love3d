@@ -38,7 +38,7 @@ local glheader = [[
 ** included as <GL/glcorearb.h>.
 **
 ** glcorearb.h includes only APIs in the latest OpenGL core profile
-** implementation together with APIs in newer ARB extensions which 
+** implementation together with APIs in newer ARB extensions which
 ** can be supported by the core profile. It does not, and never will
 ** include functionality removed from the core profile, such as
 ** fixed-function vertex and fragment processing.
@@ -2111,6 +2111,16 @@ typedef void (APIENTRYP PFNGLTEXPAGECOMMITMENTARBPROC) (GLenum target, GLint lev
 #define GL_COMPRESSED_SRGB8_ALPHA8_ASTC_10x10_KHR 0x93DB
 #define GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x10_KHR 0x93DC
 #define GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12_KHR 0x93DD
+
+// Some GL1 shit love uses on desktop GL.
+#define GL_MATRIX_MODE                          0x0BA0
+#define GL_MODELVIEW                            0x1700
+#define GL_PROJECTION                           0x1701
+#define GL_TEXTURE                              0x1702
+
+typedef void (APIENTRYP PFNGLNAMEDSTRINGARBPROC) (GLenum type, GLint namelen, const GLchar *name, GLint stringlen, const GLchar *string);
+typedef void (APIENTRYP PFNGLMATRIXMODEPROC) (GLenum mode);
+typedef void (APIENTRYP PFNGLLOADMATRIXFPROC) (const GLfloat *m);
 ]]
 
 local openGL = {
@@ -2149,9 +2159,9 @@ local function constant_replace(name, value)
 			num = tonumber(value)
 		end
 	end
-	
+
 	GL[name] = GL[name] or ctype(num)
-	
+
 	return ""
 end
 

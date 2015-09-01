@@ -44,7 +44,7 @@ local function combine(...)
 end
 
 -- import all the GL function pointers (using SDL)
-function l3d.import(use_monkeypatching)
+function l3d.import(use_monkeypatching, automatic_transforms)
 	ffi.cdef([[
 		typedef enum {
 			SDL_GL_DEPTH_SIZE = 6
@@ -90,7 +90,7 @@ function l3d.import(use_monkeypatching)
 	print(string.format("Depth bits: %d", out[0]))
 
 	if use_monkeypatching then
-		l3d.patch()
+		l3d.patch(automatic_transforms == nil and true or automatic_transforms)
 	end
 end
 
@@ -194,6 +194,7 @@ function l3d.push(which)
 	assert(#stack < 64, "Stack overflow - your stack is too deep, did you forget to pop?")
 	if #stack == 0 then
 		table.insert(stack, {
+			projection = false,
 			matrix = cpml.mat4(),
 			active_shader = l3d._active_shader,
 		})
@@ -201,6 +202,7 @@ function l3d.push(which)
 		-- storing the active shader is useful, but don't touch it!
 		local top = stack[#stack]
 		local new = {
+			projection = top.projection,
 			matrix = top.matrix:clone(),
 			active_shader = top.active_shader,
 		}
@@ -228,8 +230,12 @@ function l3d.translate(x, y, z)
 end
 
 function l3d.rotate(r, axis)
-	assert(type(r) == "number")
 	local top = l3d._state.stack_top
+	if type(r) == "table" and r.w then
+		top.matrix = top.matrix:rotate(r)
+		return
+	end
+	assert(type(r) == "number")
 	top.matrix = top.matrix:rotate(r, axis or { 0, 0, 1 })
 end
 
@@ -245,6 +251,32 @@ end
 
 function l3d.get_matrix()
 	return l3d._state.stack_top.matrix
+end
+
+-- XXX: You should basically only do this if you are Karai and have no idea how
+-- the fuck to operate a GPU. This will probably make your code slow and cause
+-- horrible things to happen to you, your family and your free time.
+function l3d.update_matrix(matrix_type, m)
+	if use_gles and not l3d._active_shader then
+		return
+	end
+	local w, h
+	if matrix_type == "projection" then
+		w, h = love.graphics.getDimensions()
+	end
+	local send_m = m or matrix_type == "projection" and cpml.mat4():ortho(0, w, 0, h, -100, 100) or l3d.get_matrix()
+	-- XXX: COMPLETE HORSE SHIT. Love uses GL1.0 matrix loading for performance.
+	if not use_gles then
+		local buf = ffi.new("GLfloat[?]", 16, send_m)
+		gl.MatrixMode(matrix_type == "transform" and GL.MODELVIEW or GL.PROJECTION)
+		gl.LoadMatrixf(buf)
+	else
+		-- ...But on ES it uses glUniformMatrix like it should.
+		l3d._active_shader:send(matrix_type == "transform" and "TransformMatrix" or "ProjectionMatrix", send_m:to_vec4s())
+	end
+	if matrix_type == "projection" then
+		l3d._state.stack_top.projection = true
+	end
 end
 
 -- Create a buffer from a list of vertices (just vec3's)
@@ -345,7 +377,7 @@ end
 -- This isn't good practice (which is why you must explicitly call it), but
 -- patching various love functions to maintain state here makes things a lot
 -- more pleasant to use.
-function l3d.patch()
+function l3d.patch(automatic_transforms)
 	love.graphics.getLove3D     = function() return l3d end
 	love.graphics.clearDepth    = function() l3d.clear() end
 	love.graphics.setDepthTest  = l3d.set_depth_test
@@ -354,15 +386,59 @@ function l3d.patch()
 	love.graphics.setFrontFace  = l3d.set_front_face
 	love.graphics.reset         = combine(l3d.reset, love.graphics.reset)
 
-	love.graphics.origin        = combine(l3d.origin, love.graphics.origin)
-	love.graphics.pop           = combine(l3d.pop, love.graphics.pop)
-	love.graphics.push          = combine(l3d.push, love.graphics.push)
-	love.graphics.rotate        = combine(l3d.rotate, love.graphics.rotate)
-	love.graphics.scale         = combine(l3d.scale, love.graphics.scale)
-	love.graphics.translate     = combine(l3d.translate, love.graphics.translate)
-	love.graphics.getMatrix     = l3d.get_matrix
+	local update = automatic_transforms and function() l3d.update_matrix("transform") end or function() end
 
-	love.graphics.setShader     = combine(l3d.update_shader, love.graphics.setShader)
+	local reset_proj = function()
+		if not automatic_transforms then
+			return
+		end
+		local stack = l3d._state.stack
+		local below = stack[#stack-1]
+		if (below and not below.projection) or not below then
+			l3d.update_matrix("projection")
+		end
+	end
+
+	love.graphics.origin        = combine(l3d.origin, love.graphics.origin, update)
+	love.graphics.pop           = combine(l3d.pop, love.graphics.pop, update, reset_proj)
+	love.graphics.push          = combine(l3d.push, love.graphics.push)
+	-- no use calling love's function if it will explode.
+	local orig = {
+		translate = love.graphics.translate,
+		rotate    = love.graphics.rotate,
+		scale     = love.graphics.scale
+	}
+	love.graphics.rotate = function(r, axis)
+		if type(r) == "number" then
+			orig.rotate(r)
+		end
+		l3d.rotate(r, axis)
+		update()
+	end
+	love.graphics.scale = function(x, y, z)
+		if type(x) == "table" and cpml.vec3.isvector(x) then
+			l3d.scale(x)
+			update()
+			return
+		end
+		l3d.scale(x, y, z)
+		orig.scale(x, y)
+		update()
+	end
+	love.graphics.translate = function(x, y, z)
+		if type(x) == "table" and cpml.vec3.isvector(x) then
+			l3d.translate(x)
+			update()
+			return
+		end
+		l3d.translate(x, y, z)
+		orig.translate(x, y)
+		update()
+	end
+	love.graphics.getMatrix     = l3d.get_matrix
+	love.graphics.updateMatrix  = l3d.update_matrix
+
+	love.graphics.setShader     = combine(l3d.update_shader, love.graphics.setShader, update)
 	love.graphics.newCanvas     = l3d.new_canvas
 end
 
