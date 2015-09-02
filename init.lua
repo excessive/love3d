@@ -45,13 +45,16 @@ end
 
 -- import all the GL function pointers (using SDL)
 function l3d.import(use_monkeypatching, automatic_transforms)
-	ffi.cdef([[
-		typedef enum {
-			SDL_GL_DEPTH_SIZE = 6
-		} SDL_GLattr;
-		void *SDL_GL_GetProcAddress(const char *proc);
-		int SDL_GL_GetAttribute(SDL_GLattr attr, int* value);
-	]])
+	local already_loaded = pcall(function() return ffi.C.SDL_GL_DEPTH_SIZE end)
+	if not already_loaded then
+		ffi.cdef([[
+			typedef enum {
+				SDL_GL_DEPTH_SIZE = 6
+			} SDL_GLattr;
+			void *SDL_GL_GetProcAddress(const char *proc);
+			int SDL_GL_GetAttribute(SDL_GLattr attr, int* value);
+		]])
+	end
 
 	-- Windows needs to use an external SDL
 	local sdl
@@ -257,7 +260,7 @@ end
 -- the fuck to operate a GPU. This will probably make your code slow and cause
 -- horrible things to happen to you, your family and your free time.
 function l3d.update_matrix(matrix_type, m)
-	if use_gles and not l3d._active_shader then
+	if --[[use_gles and]] not l3d._active_shader then
 		return
 	end
 	local w, h
@@ -266,14 +269,14 @@ function l3d.update_matrix(matrix_type, m)
 	end
 	local send_m = m or matrix_type == "projection" and cpml.mat4():ortho(0, w, 0, h, -100, 100) or l3d.get_matrix()
 	-- XXX: COMPLETE HORSE SHIT. Love uses GL1.0 matrix loading for performance.
-	if not use_gles then
-		local buf = ffi.new("GLfloat[?]", 16, send_m)
-		gl.MatrixMode(matrix_type == "transform" and GL.MODELVIEW or GL.PROJECTION)
-		gl.LoadMatrixf(buf)
-	else
+	-- if not use_gles then
+		-- local buf = ffi.new("GLfloat[?]", 16, send_m)
+		-- gl.MatrixMode(matrix_type == "transform" and GL.MODELVIEW or GL.PROJECTION)
+		-- gl.LoadMatrixf(buf)
+	-- else
 		-- ...But on ES it uses glUniformMatrix like it should.
-		l3d._active_shader:send(matrix_type == "transform" and "TransformMatrix" or "ProjectionMatrix", send_m:to_vec4s())
-	end
+		l3d._active_shader:send(matrix_type == "transform" and "u_model" or "u_projection", send_m:to_vec4s())
+	-- end
 	if matrix_type == "projection" then
 		l3d._state.stack_top.projection = true
 	end
