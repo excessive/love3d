@@ -43,8 +43,7 @@ end
 
 ## Todo
 * Include a useful default shader
-* Automatically update shader uniforms when doing transformations
-* Implement love.graphics.shear, so that our matrix state won't desync if it is used.
+* Implement love.graphics.shear
 * Add debug functionality:
   * Bounding boxes
   * Rays
