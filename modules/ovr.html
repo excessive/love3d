@@ -1,0 +1,261 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>LÖVE3D documentation</title>
+    <link rel="stylesheet" href="../ldoc.css" type="text/css" />
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>LÖVE3D</h1>
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+<h2>Contents</h2>
+<ul>
+<li><a href="#Functions">Functions</a></li>
+</ul>
+
+
+<h2>Modules</h2>
+<ul class="$(kind=='Topics' and '' or 'nowrap'">
+  <li><a href="../modules/l3d.html">l3d</a></li>
+  <li><strong>ovr</strong></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+<h1>Module <code>ovr</code></h1>
+<p>Oculus Rift support for LÖVE3D.</p>
+<p> Currently targets SDK 0.6</p>
+
+
+<h2><a href="#Functions">Functions</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#init">init (quality)</a></td>
+	<td class="summary">Initialize the Rift.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#shutdown">shutdown (rift)</a></td>
+	<td class="summary">Clean up all data used by LibOVR.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#draw_mirror">draw_mirror (rift)</a></td>
+	<td class="summary">Draw a mirror of what is displaying on the Rift.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#projection">projection (rift, eye)</a></td>
+	<td class="summary">Create a projection matrix appropriate for HMD usage.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#eyes">eyes (rift)</a></td>
+	<td class="summary">Iterator for processing each view.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#submit_frame">submit_frame (rift)</a></td>
+	<td class="summary">Submit current frame to Rift.</td>
+	</tr>
+</table>
+
+<br/>
+<br/>
+
+
+    <h2 class="section-header "><a name="Functions"></a>Functions</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "init"></a>
+    <strong>init (quality)</strong>
+    </dt>
+    <dd>
+
+<p>Initialize the Rift.
+ Quality defaults to 0.9, set lower or higher depending on GPU performance.
+ In practice 0.9 is usually about ideal, but >1 can be used for super sampling
+ the buffers.
+ Usage:</p>
+<pre><code>local rift = ovr.init()
+-- (later)
+rift:shutdown()
+</code></pre>
+
+
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">quality</span>
+         scaling factor for render buffers.
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "shutdown"></a>
+    <strong>shutdown (rift)</strong>
+    </dt>
+    <dd>
+    Clean up all data used by LibOVR.
+ Call this when shutting down your program.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">rift</span>
+
+
+
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "draw_mirror"></a>
+    <strong>draw_mirror (rift)</strong>
+    </dt>
+    <dd>
+    Draw a mirror of what is displaying on the Rift.
+ Used to view what is happening on the headset on your monitor.</p>
+
+<p> Note: Blits directly to the window.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">rift</span>
+
+
+
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "projection"></a>
+    <strong>projection (rift, eye)</strong>
+    </dt>
+    <dd>
+    Create a projection matrix appropriate for HMD usage.
+ Convenience function.</p>
+
+<p> Shortcut for <code>cpml.mat4():hmd_perspective(rift.fov[eye], near, far, false, false)</code>.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">rift</span>
+
+
+
+        </li>
+        <li><span class="parameter">eye</span>
+         eye index
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "eyes"></a>
+    <strong>eyes (rift)</strong>
+    </dt>
+    <dd>
+    Iterator for processing each view.
+ You should draw the same thing for each eye, just offset with the pose.
+ Usage:</p>
+<pre><code>for eye, pose in rift:eyes() do
+    -- eye is a number, pose is an orientation and a position.
+    -- Usually used like this (ugly! may be cleaned up later).
+    -- cpml.mat4():rotate(pose.orientation:conjugate()):translate(-pose.position)
+    draw(eye, pose)
+end
+</code></pre>
+<p> This function takes care of frame timings and per-eye render setup for you.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">rift</span>
+
+
+
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "submit_frame"></a>
+    <strong>submit_frame (rift)</strong>
+    </dt>
+    <dd>
+    Submit current frame to Rift.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">rift</span>
+
+
+
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+</dl>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.3</a></i>
+<i style="float:right;">Last updated 2015-09-14 06:45:22 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+</body>
+</html>

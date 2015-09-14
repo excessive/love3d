@@ -1,0 +1,976 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<head>
+    <title>LÖVE3D documentation</title>
+    <link rel="stylesheet" href="../ldoc.css" type="text/css" />
+</head>
+<body>
+
+<div id="container">
+
+<div id="product">
+	<div id="product_logo"></div>
+	<div id="product_name"><big><b></b></big></div>
+	<div id="product_description"></div>
+</div> <!-- id="product" -->
+
+
+<div id="main">
+
+
+<!-- Menu -->
+
+<div id="navigation">
+<br/>
+<h1>LÖVE3D</h1>
+
+<ul>
+  <li><a href="../index.html">Index</a></li>
+</ul>
+
+<h2>Contents</h2>
+<ul>
+<li><a href="#Functions">Functions</a></li>
+</ul>
+
+
+<h2>Modules</h2>
+<ul class="$(kind=='Topics' and '' or 'nowrap'">
+  <li><strong>l3d</strong></li>
+  <li><a href="../modules/ovr.html">ovr</a></li>
+</ul>
+
+</div>
+
+<div id="content">
+
+<h1>Module <code>l3d</code></h1>
+<p>LÖVE3D.</p>
+<p> Utilities for working in 3D with LÖVE.</p>
+
+
+<h2><a href="#Functions">Functions</a></h2>
+<table class="function_list">
+	<tr>
+	<td class="name" nowrap><a href="#import">import (use_monkeypatching, automatic_transforms)</a></td>
+	<td class="summary">Load OpenGL functions for use by LÖVE3D.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#clear">clear (color, depth)</a></td>
+	<td class="summary">Clear color/depth buffers.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#reset">reset ()</a></td>
+	<td class="summary">Reset LOVE3D state.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#set_depth_write">set_depth_write (mask)</a></td>
+	<td class="summary">Set depth writing.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#set_depth_test">set_depth_test (method)</a></td>
+	<td class="summary">Set depth test method.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#set_front_face">set_front_face (facing)</a></td>
+	<td class="summary">Set front face winding.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#set_culling">set_culling (method)</a></td>
+	<td class="summary">Set culling method.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#update_shader">update_shader (shader)</a></td>
+	<td class="summary">Update the active shader.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#push">push (which)</a></td>
+	<td class="summary">Push the current matrix to the stack.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#pop">pop ()</a></td>
+	<td class="summary">Pop the current matrix off the stack.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#translate">translate (x, y, z)</a></td>
+	<td class="summary">Translate the current matrix.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#rotate">rotate (r, axis)</a></td>
+	<td class="summary">Translate the current matrix.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#scale">scale (x, y, z)</a></td>
+	<td class="summary">Scale the current matrix.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#origin">origin ()</a></td>
+	<td class="summary">Reset the current matrix.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#get_matrix">get_matrix ()</a></td>
+	<td class="summary">Return the current matrix.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#update_matrix">update_matrix (matrix_type, m)</a></td>
+	<td class="summary">Send matrix to the active shader.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#new_triangles">new_triangles (t, offset, mesh, usage)</a></td>
+	<td class="summary">Create a buffer from a list of vertices (cpml.vec3's).</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#new_canvas">new_canvas (width, height, format, msaa, gen_depth)</a></td>
+	<td class="summary">Create a canvas with a depth buffer.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#patch">patch (automatic_transforms)</a></td>
+	<td class="summary">Patch functions into the LOVE API.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#love.graphics.clearDepth">love.graphics.clearDepth ()</a></td>
+	<td class="summary">See l3d.clear.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#love.graphics.setDepthTest">love.graphics.setDepthTest ()</a></td>
+	<td class="summary">See l3d.set<em>depth</em>test.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#love.graphics.setDepthWrite">love.graphics.setDepthWrite ()</a></td>
+	<td class="summary">See l3d.set<em>depth</em>write.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#love.graphics.setCulling">love.graphics.setCulling ()</a></td>
+	<td class="summary">See l3d.set_culling.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#love.graphics.setFrontFace">love.graphics.setFrontFace ()</a></td>
+	<td class="summary">See l3d.set<em>front</em>face.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#love.graphics.reset">love.graphics.reset ()</a></td>
+	<td class="summary">See l3d.reset.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#love.graphics.origin">love.graphics.origin ()</a></td>
+	<td class="summary">See l3d.origin.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#love.graphics.pop">love.graphics.pop ()</a></td>
+	<td class="summary">See l3d.pop.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#love.graphics.push">love.graphics.push ()</a></td>
+	<td class="summary">See l3d.push.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#love.graphics.rotate">love.graphics.rotate (r, axis)</a></td>
+	<td class="summary">See l3d.rotate.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#love.graphics.scale">love.graphics.scale (x, y, z)</a></td>
+	<td class="summary">See l3d.scale.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#love.graphics.translate">love.graphics.translate (x, y, z)</a></td>
+	<td class="summary">See l3d.translate.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#love.graphics.getMatrix">love.graphics.getMatrix ()</a></td>
+	<td class="summary">See l3d.get_matrix.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#love.graphics.updateMatrix">love.graphics.updateMatrix (matrix_type, m)</a></td>
+	<td class="summary">See l3d.update_matrix.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#love.graphics.setShader">love.graphics.setShader (shader)</a></td>
+	<td class="summary">See l3d.update_shader.</td>
+	</tr>
+	<tr>
+	<td class="name" nowrap><a href="#love.graphics.newCanvas">love.graphics.newCanvas ()</a></td>
+	<td class="summary">See l3d.new_canvas.</td>
+	</tr>
+</table>
+
+<br/>
+<br/>
+
+
+    <h2 class="section-header "><a name="Functions"></a>Functions</h2>
+
+    <dl class="function">
+    <dt>
+    <a name = "import"></a>
+    <strong>import (use_monkeypatching, automatic_transforms)</strong>
+    </dt>
+    <dd>
+    Load OpenGL functions for use by LÖVE3D.
+ Loads extra functions that LÖVE does not provide and optionally adds/updates
+ functions in love.graphics for 3D.</p>
+
+<p> This must be called before anything else.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">use_monkeypatching</span>
+         patch the LOVE API with LOVE3D functions
+        </li>
+        <li><span class="parameter">automatic_transforms</span>
+         attempt to automatically upload transformation matrices
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "clear"></a>
+    <strong>clear (color, depth)</strong>
+    </dt>
+    <dd>
+    Clear color/depth buffers.
+ Must pass false (not nil!) to disable clearing. Defaults to depth only.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">color</span>
+         clear color buffer (bool)
+        </li>
+        <li><span class="parameter">depth</span>
+         clear depth buffer (bool)
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "reset"></a>
+    <strong>reset ()</strong>
+    </dt>
+    <dd>
+    Reset LOVE3D state.
+ Disables depth testing, enables depth writing, disables culling and resets
+ front face.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "set_depth_write"></a>
+    <strong>set_depth_write (mask)</strong>
+    </dt>
+    <dd>
+    Set depth writing.
+ Enable or disable writing to the depth buffer.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">mask</span>
+
+
+
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "set_depth_test"></a>
+    <strong>set_depth_test (method)</strong>
+    </dt>
+    <dd>
+    Set depth test method.
+ Can be "greater", "equal", "less" or unspecified to disable depth testing.
+ Usually you want to use "less".
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">method</span>
+
+
+
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "set_front_face"></a>
+    <strong>set_front_face (facing)</strong>
+    </dt>
+    <dd>
+    Set front face winding.
+ Can be "cw", "ccw" or unspecified to reset to ccw.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">facing</span>
+
+
+
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "set_culling"></a>
+    <strong>set_culling (method)</strong>
+    </dt>
+    <dd>
+    Set culling method.
+ Can be "front", "back" or unspecified to reset to none.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">method</span>
+
+
+
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "update_shader"></a>
+    <strong>update_shader (shader)</strong>
+    </dt>
+    <dd>
+    Update the active shader.
+ Used internally by patched API, update it yourself otherwise.
+ This is important for l3d.push/pop and update_matrix.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">shader</span>
+
+
+
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "push"></a>
+    <strong>push (which)</strong>
+    </dt>
+    <dd>
+    Push the current matrix to the stack.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">which</span>
+
+
+
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "pop"></a>
+    <strong>pop ()</strong>
+    </dt>
+    <dd>
+    Pop the current matrix off the stack.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "translate"></a>
+    <strong>translate (x, y, z)</strong>
+    </dt>
+    <dd>
+    Translate the current matrix.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">x</span>
+         vec3 or x translation
+        </li>
+        <li><span class="parameter">y</span>
+         y translation
+        </li>
+        <li><span class="parameter">z</span>
+         z translation (or 1)
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "rotate"></a>
+    <strong>rotate (r, axis)</strong>
+    </dt>
+    <dd>
+    Translate the current matrix.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">r</span>
+         rotation angle in radians
+        </li>
+        <li><span class="parameter">axis</span>
+         axis to rotate about. Z if unspecified.
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "scale"></a>
+    <strong>scale (x, y, z)</strong>
+    </dt>
+    <dd>
+    Scale the current matrix.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">x</span>
+         vec3 or x scale
+        </li>
+        <li><span class="parameter">y</span>
+         y scale
+        </li>
+        <li><span class="parameter">z</span>
+         z scale (or 1)
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "origin"></a>
+    <strong>origin ()</strong>
+    </dt>
+    <dd>
+    Reset the current matrix.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "get_matrix"></a>
+    <strong>get_matrix ()</strong>
+    </dt>
+    <dd>
+    Return the current matrix.
+
+
+
+    <h3>Returns:</h3>
+    <ol>
+
+        mat4
+    </ol>
+
+
+
+
+</dd>
+    <dt>
+    <a name = "update_matrix"></a>
+    <strong>update_matrix (matrix_type, m)</strong>
+    </dt>
+    <dd>
+    Send matrix to the active shader.
+ Convenience function.</p>
+
+<p> Valid matrix types are currently "transform" and "projection".
+ A "view" type will likely be added in the future for convenience.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">matrix_type</span>
+
+
+
+        </li>
+        <li><span class="parameter">m</span>
+
+
+
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "new_triangles"></a>
+    <strong>new_triangles (t, offset, mesh, usage)</strong>
+    </dt>
+    <dd>
+    Create a buffer from a list of vertices (cpml.vec3's).
+ Offset will offset every vertex by the specified amount, useful for preventing z-fighting.
+ Optional mesh argument will update the mesh instead of creating a new one.
+ Specify usage as "dynamic" if you intend to update it frequently.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">t</span>
+         vertex data
+        </li>
+        <li><span class="parameter">offset</span>
+
+
+
+        </li>
+        <li><span class="parameter">mesh</span>
+         used when updating
+        </li>
+        <li><span class="parameter">usage</span>
+
+
+
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "new_canvas"></a>
+    <strong>new_canvas (width, height, format, msaa, gen_depth)</strong>
+    </dt>
+    <dd>
+    Create a canvas with a depth buffer.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">width</span>
+
+
+
+        </li>
+        <li><span class="parameter">height</span>
+
+
+
+        </li>
+        <li><span class="parameter">format</span>
+
+
+
+        </li>
+        <li><span class="parameter">msaa</span>
+
+
+
+        </li>
+        <li><span class="parameter">gen_depth</span>
+
+
+
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "patch"></a>
+    <strong>patch (automatic_transforms)</strong>
+    </dt>
+    <dd>
+    Patch functions into the LOVE API.
+ Automatically called by l3d.import(true).</p>
+
+<p> This isn't good practice (which is why you must explicitly call it), but
+ patching various love functions to maintain state here makes things a lot
+ more pleasant to use.</p>
+
+<p> Do not call this function if you've already called import(true).
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">automatic_transforms</span>
+
+
+
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "love.graphics.clearDepth"></a>
+    <strong>love.graphics.clearDepth ()</strong>
+    </dt>
+    <dd>
+    See l3d.clear.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "love.graphics.setDepthTest"></a>
+    <strong>love.graphics.setDepthTest ()</strong>
+    </dt>
+    <dd>
+    See l3d.set<em>depth</em>test.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "love.graphics.setDepthWrite"></a>
+    <strong>love.graphics.setDepthWrite ()</strong>
+    </dt>
+    <dd>
+    See l3d.set<em>depth</em>write.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "love.graphics.setCulling"></a>
+    <strong>love.graphics.setCulling ()</strong>
+    </dt>
+    <dd>
+    See l3d.set_culling.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "love.graphics.setFrontFace"></a>
+    <strong>love.graphics.setFrontFace ()</strong>
+    </dt>
+    <dd>
+    See l3d.set<em>front</em>face.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "love.graphics.reset"></a>
+    <strong>love.graphics.reset ()</strong>
+    </dt>
+    <dd>
+    See l3d.reset.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "love.graphics.origin"></a>
+    <strong>love.graphics.origin ()</strong>
+    </dt>
+    <dd>
+    See l3d.origin.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "love.graphics.pop"></a>
+    <strong>love.graphics.pop ()</strong>
+    </dt>
+    <dd>
+    See l3d.pop.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "love.graphics.push"></a>
+    <strong>love.graphics.push ()</strong>
+    </dt>
+    <dd>
+    See l3d.push.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "love.graphics.rotate"></a>
+    <strong>love.graphics.rotate (r, axis)</strong>
+    </dt>
+    <dd>
+    See l3d.rotate.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">r</span>
+
+
+
+        </li>
+        <li><span class="parameter">axis</span>
+
+
+
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "love.graphics.scale"></a>
+    <strong>love.graphics.scale (x, y, z)</strong>
+    </dt>
+    <dd>
+    See l3d.scale.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">x</span>
+
+
+
+        </li>
+        <li><span class="parameter">y</span>
+
+
+
+        </li>
+        <li><span class="parameter">z</span>
+
+
+
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "love.graphics.translate"></a>
+    <strong>love.graphics.translate (x, y, z)</strong>
+    </dt>
+    <dd>
+    See l3d.translate.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">x</span>
+
+
+
+        </li>
+        <li><span class="parameter">y</span>
+
+
+
+        </li>
+        <li><span class="parameter">z</span>
+
+
+
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "love.graphics.getMatrix"></a>
+    <strong>love.graphics.getMatrix ()</strong>
+    </dt>
+    <dd>
+    See l3d.get_matrix.
+
+
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "love.graphics.updateMatrix"></a>
+    <strong>love.graphics.updateMatrix (matrix_type, m)</strong>
+    </dt>
+    <dd>
+    See l3d.update_matrix.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">matrix_type</span>
+
+
+
+        </li>
+        <li><span class="parameter">m</span>
+
+
+
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "love.graphics.setShader"></a>
+    <strong>love.graphics.setShader (shader)</strong>
+    </dt>
+    <dd>
+    See l3d.update_shader.
+
+
+    <h3>Parameters:</h3>
+    <ul>
+        <li><span class="parameter">shader</span>
+
+
+
+        </li>
+    </ul>
+
+
+
+
+
+</dd>
+    <dt>
+    <a name = "love.graphics.newCanvas"></a>
+    <strong>love.graphics.newCanvas ()</strong>
+    </dt>
+    <dd>
+    See l3d.new_canvas.
+
+
+
+
+
+
+
+</dd>
+</dl>
+
+
+</div> <!-- id="content" -->
+</div> <!-- id="main" -->
+<div id="about">
+<i>generated by <a href="http://github.com/stevedonovan/LDoc">LDoc 1.4.3</a></i>
+<i style="float:right;">Last updated 2015-09-14 06:45:22 </i>
+</div> <!-- id="about" -->
+</div> <!-- id="container" -->
+</body>
+</html>
