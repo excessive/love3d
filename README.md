@@ -10,6 +10,8 @@ Depends on LÖVE 0.10 and [CPML](https://github.com/excessive/cpml)
 
 You can load models using [IQM](https://github.com/excessive/iqm).
 
+Online documentation can be found [here](http://excessive.github.io/love3d/) or you can generate them yourself using `ldoc -c doc/config.ld -o index .`
+
 ## Usage
 ```lua
 require("love3d").import(true)
