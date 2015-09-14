@@ -1,3 +1,8 @@
+--- Oculus Rift support for LÖVE3D.
+-- Currently targets SDK 0.6
+-- @module ovr
+-- @alias ret
+
 local ffi = require "ffi"
 
 ffi.cdef [[
@@ -380,265 +385,304 @@ ovrResult ovrHmd_CreateMirrorTextureGL(ovrHmd hmd, GLuint format, int width, int
 
 local ovr = ffi.load(ffi.os == "Windows" and "bin/LibOVR.dll" or error("Oculus really should support not windows, too."))
 
-return setmetatable(
-{
-	init = function(quality)
-		local cpml = require "cpml"
-		local rift
-		quality = quality or 0.9
-		if ovr.ovr_Initialize(nil) == ovr.ovrSuccess then
-			rift = {}
-			print("Initialized LibOVR")
-			local hmd = ffi.new("ovrHmd[?]", 1)
-			if ovr.ovrHmd_Create(0, hmd) == ovr.ovrSuccess then
-				hmd = hmd[0]
-				print("Initialized HMD")
+local ret = {}
 
-				local flags = ovr.ovrTrackingCap_Orientation
-				flags = bit.bor(flags, ovr.ovrTrackingCap_MagYawCorrection)
-				flags = bit.bor(flags, ovr.ovrTrackingCap_Position) -- DK2+
+--- Initialize the Rift.
+-- Quality defaults to 0.9, set lower or higher depending on GPU performance.
+-- In practice 0.9 is usually about ideal, but >1 can be used for super sampling
+-- the buffers.
+-- Usage:
+-- 	local rift = ovr.init()
+-- 	-- (later)
+-- 	rift:shutdown()
+-- @param quality scaling factor for render buffers.
+function ret.init(quality)
+	local cpml = require "cpml"
+	local rift
+	quality = quality or 0.9
+	if ovr.ovr_Initialize(nil) == ovr.ovrSuccess then
+		rift = {}
+		print("Initialized LibOVR")
+		local hmd = ffi.new("ovrHmd[?]", 1)
+		if ovr.ovrHmd_Create(0, hmd) == ovr.ovrSuccess then
+			hmd = hmd[0]
+			print("Initialized HMD")
 
-				ovr.ovrHmd_SetEnabledCaps(hmd, bit.bor(ovr.ovrHmdCap_LowPersistence, ovr.ovrHmdCap_DynamicPrediction))
-				ovr.ovrHmd_ConfigureTracking(hmd, flags, 0)
+			local flags = ovr.ovrTrackingCap_Orientation
+			flags = bit.bor(flags, ovr.ovrTrackingCap_MagYawCorrection)
+			flags = bit.bor(flags, ovr.ovrTrackingCap_Position) -- DK2+
 
-				rift.hmd = hmd
+			ovr.ovrHmd_SetEnabledCaps(hmd, bit.bor(ovr.ovrHmdCap_LowPersistence, ovr.ovrHmdCap_DynamicPrediction))
+			ovr.ovrHmd_ConfigureTracking(hmd, flags, 0)
 
-				local rec_size = ovr.ovrHmd_GetFovTextureSize(hmd, ovr.ovrEye_Left, hmd.DefaultEyeFov[0], quality)
-				local rec_size_r = ovr.ovrHmd_GetFovTextureSize(hmd, ovr.ovrEye_Right, hmd.DefaultEyeFov[1], quality)
-				rec_size.w = rec_size.w + rec_size_r.w
-				rec_size.h = math.max(rec_size.h, rec_size_r.h)
+			rift.hmd = hmd
 
-				local function mk_color(hmd, size)
-					local swaps = ffi.new("ovrSwapTextureSet*[?]", 1)
-					local textures = {}
-					assert(ovr.ovrHmd_CreateSwapTextureSetGL(hmd, GL.RGBA, size.w, size.h, swaps) == ovr.ovrSuccess)
-					print(string.format("Created %dx%d swap texture set.", size.w, size.h))
-					for i = 1, swaps[0].TextureCount do
-						local tex = ffi.cast("ovrGLTexture*", swaps[0].Textures[i-1])
-						gl.BindTexture(GL.TEXTURE_2D_MULTISAMPLE, tex.OGL.TexId)
-						gl.TexParameteri(GL.TEXTURE_2D_MULTISAMPLE, GL.TEXTURE_MIN_FILTER, GL.LINEAR)
-						gl.TexParameteri(GL.TEXTURE_2D_MULTISAMPLE, GL.TEXTURE_MAG_FILTER, GL.LINEAR)
-						gl.TexParameteri(GL.TEXTURE_2D_MULTISAMPLE, GL.TEXTURE_WRAP_S, GL.CLAMP_TO_EDGE)
-						gl.TexParameteri(GL.TEXTURE_2D_MULTISAMPLE, GL.TEXTURE_WRAP_T, GL.CLAMP_TO_EDGE)
-						gl.TexImage2DMultisample(GL.TEXTURE_2D_MULTISAMPLE, 4, GL.RGBA8, size.w, size.h, false)
-						textures[i] = tex.OGL.TexId
-					end
-					local fbo = ffi.new("GLuint[?]", 1)
-					gl.GenFramebuffers(1, fbo)
+			local rec_size = ovr.ovrHmd_GetFovTextureSize(hmd, ovr.ovrEye_Left, hmd.DefaultEyeFov[0], quality)
+			local rec_size_r = ovr.ovrHmd_GetFovTextureSize(hmd, ovr.ovrEye_Right, hmd.DefaultEyeFov[1], quality)
+			rec_size.w = rec_size.w + rec_size_r.w
+			rec_size.h = math.max(rec_size.h, rec_size_r.h)
 
-					return {
-						swaps = swaps,
-						size = cpml.vec2(size.w, size.h),
-						textures = textures,
-						fbo = fbo
-					}
+			local function mk_color(hmd, size)
+				local swaps = ffi.new("ovrSwapTextureSet*[?]", 1)
+				local textures = {}
+				assert(ovr.ovrHmd_CreateSwapTextureSetGL(hmd, GL.RGBA, size.w, size.h, swaps) == ovr.ovrSuccess)
+				print(string.format("Created %dx%d swap texture set.", size.w, size.h))
+				for i = 1, swaps[0].TextureCount do
+					local tex = ffi.cast("ovrGLTexture*", swaps[0].Textures[i-1])
+					gl.BindTexture(GL.TEXTURE_2D_MULTISAMPLE, tex.OGL.TexId)
+					gl.TexParameteri(GL.TEXTURE_2D_MULTISAMPLE, GL.TEXTURE_MIN_FILTER, GL.LINEAR)
+					gl.TexParameteri(GL.TEXTURE_2D_MULTISAMPLE, GL.TEXTURE_MAG_FILTER, GL.LINEAR)
+					gl.TexParameteri(GL.TEXTURE_2D_MULTISAMPLE, GL.TEXTURE_WRAP_S, GL.CLAMP_TO_EDGE)
+					gl.TexParameteri(GL.TEXTURE_2D_MULTISAMPLE, GL.TEXTURE_WRAP_T, GL.CLAMP_TO_EDGE)
+					gl.TexImage2DMultisample(GL.TEXTURE_2D_MULTISAMPLE, 4, GL.RGBA8, size.w, size.h, false)
+					textures[i] = tex.OGL.TexId
 				end
+				local fbo = ffi.new("GLuint[?]", 1)
+				gl.GenFramebuffers(1, fbo)
 
-				local function mk_depth(size)
-					local dt = ffi.new("GLuint[?]", 1)
-					gl.GenTextures(1, dt)
-					gl.BindTexture(GL.TEXTURE_2D, dt[0])
-
-					gl.TexParameteri(GL.TEXTURE_2D, GL.TEXTURE_MIN_FILTER, GL.LINEAR)
-					gl.TexParameteri(GL.TEXTURE_2D, GL.TEXTURE_MAG_FILTER, GL.LINEAR)
-					gl.TexParameteri(GL.TEXTURE_2D, GL.TEXTURE_WRAP_S, GL.CLAMP_TO_EDGE)
-					gl.TexParameteri(GL.TEXTURE_2D, GL.TEXTURE_WRAP_T, GL.CLAMP_TO_EDGE)
-
-					-- Your shitty system had better have GL_ARB_depth_buffer_float, scrublord.
-					gl.TexImage2D(GL.TEXTURE_2D, 0, GL.DEPTH_COMPONENT32F, size.w, size.h, 0, GL.DEPTH_COMPONENT, GL.FLOAT, nil)
-
-					return dt
-				end
-
-				local textures = {
-					color = {},
-					depth = {}
+				return {
+					swaps = swaps,
+					size = cpml.vec2(size.w, size.h),
+					textures = textures,
+					fbo = fbo
 				}
-				for i=0,1 do
-				local size = ovr.ovrHmd_GetFovTextureSize(hmd, ffi.cast("ovrEyeType", i), hmd.DefaultEyeFov[i], quality)
-					textures.color[i] = mk_color(hmd, size)
-					textures.depth[i] = mk_depth(size)
-				end
-				rift.textures = textures
+			end
 
-				-- Initialize our single full screen Fov layer.
-				local layer = ffi.new("ovrLayerEyeFov")
-				layer.Header.Type = ovr.ovrLayerType_EyeFov
-				layer.Header.Flags = ovr.ovrLayerFlag_TextureOriginAtBottomLeft
+			local function mk_depth(size)
+				local dt = ffi.new("GLuint[?]", 1)
+				gl.GenTextures(1, dt)
+				gl.BindTexture(GL.TEXTURE_2D, dt[0])
 
-				local rect = ffi.new("ovrRecti[?]", 2)
-				rect[1].Pos.x, rect[1].Pos.y = 0, 0
-				rect[1].Size.w, rect[1].Size.h = rec_size.w / 2, rec_size.h
+				gl.TexParameteri(GL.TEXTURE_2D, GL.TEXTURE_MIN_FILTER, GL.LINEAR)
+				gl.TexParameteri(GL.TEXTURE_2D, GL.TEXTURE_MAG_FILTER, GL.LINEAR)
+				gl.TexParameteri(GL.TEXTURE_2D, GL.TEXTURE_WRAP_S, GL.CLAMP_TO_EDGE)
+				gl.TexParameteri(GL.TEXTURE_2D, GL.TEXTURE_WRAP_T, GL.CLAMP_TO_EDGE)
 
-				rect[0].Pos.x, rect[0].Pos.y = 0, 0 --rec_size.w / 2, 0
-				rect[0].Size.w, rect[0].Size.h = rec_size.w / 2, rec_size.h
+				-- Your shitty system had better have GL_ARB_depth_buffer_float, scrublord.
+				gl.TexImage2D(GL.TEXTURE_2D, 0, GL.DEPTH_COMPONENT32F, size.w, size.h, 0, GL.DEPTH_COMPONENT, GL.FLOAT, nil)
 
-				-- Initialize VR structures, filling out description.
-				local eyeRenderDesc = ffi.new("ovrEyeRenderDesc*[?]", 2)
-				local hmdToEyeViewOffset = ffi.new("ovrVector3f[?]", 2)
-				eyeRenderDesc[0] = ovr.ovrHmd_GetRenderDesc(hmd, ovr.ovrEye_Left, hmd.DefaultEyeFov[0])
-				eyeRenderDesc[1] = ovr.ovrHmd_GetRenderDesc(hmd, ovr.ovrEye_Right, hmd.DefaultEyeFov[1])
+				return dt
+			end
 
-				rift.offsets = {}
-				for i = 0, 1 do
-					hmdToEyeViewOffset[i] = eyeRenderDesc[i].HmdToEyeViewOffset
-					rift.offsets[i] = hmdToEyeViewOffset[i]
-					layer.ColorTexture[i] = textures.color[i].swaps[0]
-					layer.Viewport[i] = rect[i]
-					layer.Fov[i] = eyeRenderDesc[i].Fov
-				end
+			local textures = {
+				color = {},
+				depth = {}
+			}
+			for i=0,1 do
+			local size = ovr.ovrHmd_GetFovTextureSize(hmd, ffi.cast("ovrEyeType", i), hmd.DefaultEyeFov[i], quality)
+				textures.color[i] = mk_color(hmd, size)
+				textures.depth[i] = mk_depth(size)
+			end
+			rift.textures = textures
 
-				rift.layer = layer
+			-- Initialize our single full screen Fov layer.
+			local layer = ffi.new("ovrLayerEyeFov")
+			layer.Header.Type = ovr.ovrLayerType_EyeFov
+			layer.Header.Flags = ovr.ovrLayerFlag_TextureOriginAtBottomLeft
 
-				rift.fov = {
-					[0] = {
-						UpTan = eyeRenderDesc[0].Fov.UpTan,
-						DownTan = eyeRenderDesc[0].Fov.DownTan,
-						LeftTan = eyeRenderDesc[0].Fov.LeftTan,
-						RightTan = eyeRenderDesc[0].Fov.RightTan
-					},
-					[1] = {
-						UpTan = eyeRenderDesc[1].Fov.UpTan,
-						DownTan = eyeRenderDesc[1].Fov.DownTan,
-						LeftTan = eyeRenderDesc[1].Fov.LeftTan,
-						RightTan = eyeRenderDesc[1].Fov.RightTan
-					}
+			local rect = ffi.new("ovrRecti[?]", 2)
+			rect[1].Pos.x, rect[1].Pos.y = 0, 0
+			rect[1].Size.w, rect[1].Size.h = rec_size.w / 2, rec_size.h
+
+			rect[0].Pos.x, rect[0].Pos.y = 0, 0 --rec_size.w / 2, 0
+			rect[0].Size.w, rect[0].Size.h = rec_size.w / 2, rec_size.h
+
+			-- Initialize VR structures, filling out description.
+			local eyeRenderDesc = ffi.new("ovrEyeRenderDesc*[?]", 2)
+			local hmdToEyeViewOffset = ffi.new("ovrVector3f[?]", 2)
+			eyeRenderDesc[0] = ovr.ovrHmd_GetRenderDesc(hmd, ovr.ovrEye_Left, hmd.DefaultEyeFov[0])
+			eyeRenderDesc[1] = ovr.ovrHmd_GetRenderDesc(hmd, ovr.ovrEye_Right, hmd.DefaultEyeFov[1])
+
+			rift.offsets = {}
+			for i = 0, 1 do
+				hmdToEyeViewOffset[i] = eyeRenderDesc[i].HmdToEyeViewOffset
+				rift.offsets[i] = hmdToEyeViewOffset[i]
+				layer.ColorTexture[i] = textures.color[i].swaps[0]
+				layer.Viewport[i] = rect[i]
+				layer.Fov[i] = eyeRenderDesc[i].Fov
+			end
+
+			rift.layer = layer
+
+			rift.fov = {
+				[0] = {
+					UpTan = eyeRenderDesc[0].Fov.UpTan,
+					DownTan = eyeRenderDesc[0].Fov.DownTan,
+					LeftTan = eyeRenderDesc[0].Fov.LeftTan,
+					RightTan = eyeRenderDesc[0].Fov.RightTan
+				},
+				[1] = {
+					UpTan = eyeRenderDesc[1].Fov.UpTan,
+					DownTan = eyeRenderDesc[1].Fov.DownTan,
+					LeftTan = eyeRenderDesc[1].Fov.LeftTan,
+					RightTan = eyeRenderDesc[1].Fov.RightTan
 				}
+			}
 
-				-- Create mirror texture and an FBO used to copy mirror texture to back buffer
-				local mirrorTexture = ffi.new("ovrGLTexture*[?]", 1)
-				local w, h = love.graphics.getDimensions()
-				ovr.ovrHmd_CreateMirrorTextureGL(hmd, GL.RGBA, w, h, ffi.cast("ovrTexture**", mirrorTexture))
-				rift.mirror_texture = mirrorTexture
+			-- Create mirror texture and an FBO used to copy mirror texture to back buffer
+			local mirrorTexture = ffi.new("ovrGLTexture*[?]", 1)
+			local w, h = love.graphics.getDimensions()
+			ovr.ovrHmd_CreateMirrorTextureGL(hmd, GL.RGBA, w, h, ffi.cast("ovrTexture**", mirrorTexture))
+			rift.mirror_texture = mirrorTexture
 
-				-- Configure the mirror read buffer
-				local mirrorFBO = ffi.new("GLuint[?]", 1)
-				gl.GenFramebuffers(1, mirrorFBO)
-				gl.BindFramebuffer(GL.READ_FRAMEBUFFER, mirrorFBO[0])
-				gl.FramebufferTexture2D(GL.READ_FRAMEBUFFER, GL.COLOR_ATTACHMENT0, GL.TEXTURE_2D, mirrorTexture[0].OGL.TexId, 0)
-				gl.FramebufferRenderbuffer(GL.READ_FRAMEBUFFER, GL.DEPTH_ATTACHMENT, GL.RENDERBUFFER, 0)
-				gl.BindFramebuffer(GL.READ_FRAMEBUFFER, 0)
-				rift.mirror_fbo = mirrorFBO
+			-- Configure the mirror read buffer
+			local mirrorFBO = ffi.new("GLuint[?]", 1)
+			gl.GenFramebuffers(1, mirrorFBO)
+			gl.BindFramebuffer(GL.READ_FRAMEBUFFER, mirrorFBO[0])
+			gl.FramebufferTexture2D(GL.READ_FRAMEBUFFER, GL.COLOR_ATTACHMENT0, GL.TEXTURE_2D, mirrorTexture[0].OGL.TexId, 0)
+			gl.FramebufferRenderbuffer(GL.READ_FRAMEBUFFER, GL.DEPTH_ATTACHMENT, GL.RENDERBUFFER, 0)
+			gl.BindFramebuffer(GL.READ_FRAMEBUFFER, 0)
+			rift.mirror_fbo = mirrorFBO
 
-				local layers = ffi.new("const ovrLayerHeader*[?]", 1)
-				layers[0] = rift.layer.Header
+			local layers = ffi.new("const ovrLayerHeader*[?]", 1)
+			layers[0] = rift.layer.Header
 
-				local vsd = ffi.new("ovrViewScaleDesc")
-				vsd.HmdSpaceToWorldScaleInMeters = 1.0
-				vsd.HmdToEyeViewOffset[0] = rift.offsets[0]
-				vsd.HmdToEyeViewOffset[1] = rift.offsets[1]
+			local vsd = ffi.new("ovrViewScaleDesc")
+			vsd.HmdSpaceToWorldScaleInMeters = 1.0
+			vsd.HmdToEyeViewOffset[0] = rift.offsets[0]
+			vsd.HmdToEyeViewOffset[1] = rift.offsets[1]
 
-				rift.layers = layers
-				rift.vsd = vsd
+			rift.layers = layers
+			rift.vsd = vsd
 
-				local eye_offsets = ffi.new("ovrVector3f[?]", 2)
-				eye_offsets[0] = rift.offsets[0]
-				eye_offsets[1] = rift.offsets[1]
+			local eye_offsets = ffi.new("ovrVector3f[?]", 2)
+			eye_offsets[0] = rift.offsets[0]
+			eye_offsets[1] = rift.offsets[1]
 
-				rift.eye_offsets = eye_offsets
-			end
+			rift.eye_offsets = eye_offsets
 		end
-		return rift
-	end,
-	shutdown = function(rift)
-		if type(rift) == "table" then
-			if rift.hmd then
-				ovr.ovrHmd_Destroy(rift.hmd)
-				rift.hmd = nil
-				rift.layer = nil
-				rift.fov = nil
-				print("Shutdown HMD")
-			end
-			ovr.ovr_Shutdown()
-			rift = nil
-			print("Shutdown LibOVR")
-		end
-	end,
-	draw_mirror = function(rift)
-		if not rift.mirror_texture then
-			return
-		end
-		-- Blit mirror texture to back buffer
-		gl.BindFramebuffer(GL.READ_FRAMEBUFFER, rift.mirror_fbo[0])
-		gl.BindFramebuffer(GL.DRAW_FRAMEBUFFER, 0)
-		local w = rift.mirror_texture[0].OGL.Header.TextureSize.w
-		local h = rift.mirror_texture[0].OGL.Header.TextureSize.h
-		gl.BlitFramebuffer(0, h, w, 0, 0, 0, w, h, GL.COLOR_BUFFER_BIT, GL.NEAREST)
-		gl.BindFramebuffer(GL.READ_FRAMEBUFFER, 0)
-	end,
-	projection = function(rift, eye)
-		local cpml = require "cpml"
-		local fov = assert(rift.fov[eye])
-		return cpml.mat4():hmd_perspective(fov, 0.01, 10000, false, false)
-	end,
-	eyes = function(rift)
-		if not rift or not rift.hmd then
-			return nil
-		end
-
-		local cpml = require "cpml"
-		local eye = -1
-
-		local ft = ovr.ovrHmd_GetFrameTiming(rift.hmd, 0)
-		local ts = ovr.ovrHmd_GetTrackingState(rift.hmd, ft.DisplayMidpointSeconds)
-
-		if bit.band(ts.StatusFlags, bit.bor(ovr.ovrStatus_OrientationTracked, ovr.ovrStatus_PositionTracked)) ~= 0 then
-			local eye_poses = ffi.new("ovrPosef[?]", 2)
-			ovr.ovr_CalcEyePoses(ts.HeadPose.ThePose, rift.eye_offsets, eye_poses)
-
-			rift.layer.RenderPose[0] = eye_poses[0]
-			rift.layer.RenderPose[1] = eye_poses[1]
-		end
-
-		local idx = ft.AppFrameIndex % 2
-
-		local closure = function()
-			if eye >= 1 then
-				local w, h = love.graphics.getDimensions()
-
-				gl.FramebufferTexture2D(GL.FRAMEBUFFER, GL.COLOR_ATTACHMENT0, GL.TEXTURE_2D, 0, 0)
-				gl.FramebufferTexture2D(GL.FRAMEBUFFER, GL.DEPTH_ATTACHMENT, GL.TEXTURE_2D, 0, 0)
-
-				gl.BindFramebuffer(GL.FRAMEBUFFER, 0)
-				gl.Viewport(0, 0, w, h)
-				gl.Clear(bit.bor(tonumber(GL.COLOR_BUFFER_BIT), tonumber(GL.DEPTH_BUFFER_BIT)))
-
-				return nil
-			else
-				eye = eye + 1
-
-				local pose        = rift.layer.RenderPose[eye]
-				local orientation = cpml.quat(pose.Orientation.x, pose.Orientation.y, pose.Orientation.z, pose.Orientation.w)
-				local position	   = cpml.vec3(pose.Position.x, pose.Position.y, pose.Position.z)
-
-				local texture = {
-					color = rift.textures.color[eye],
-					depth = rift.textures.depth[eye],
-				}
-				texture.color.swaps[0].CurrentIndex = idx
-
-				local fbo = texture.color.fbo
-
-				gl.BindFramebuffer(GL.FRAMEBUFFER, fbo[0])
-				gl.FramebufferTexture2D(GL.FRAMEBUFFER, GL.COLOR_ATTACHMENT0, GL.TEXTURE_2D, texture.color.textures[idx+1], 0)
-				gl.FramebufferTexture2D(GL.FRAMEBUFFER, GL.DEPTH_ATTACHMENT, GL.TEXTURE_2D, texture.depth[0], 0)
-
-				-- Does the GPU support current FBO configuration?
-				local status = gl.CheckFramebufferStatus(GL.FRAMEBUFFER)
-				assert(status == GL.FRAMEBUFFER_COMPLETE)
-
-				gl.Viewport(0, 0, texture.color.size.x, texture.color.size.y)
-				gl.Clear(bit.bor(tonumber(GL.COLOR_BUFFER_BIT), tonumber(GL.DEPTH_BUFFER_BIT)))
-
-				return eye, { orientation = orientation, position = position }
-			end
-		end
-		return closure
-	end,
-	submit_frame = function(rift)
-		assert(ovr.ovrHmd_SubmitFrame(rift.hmd, 0, rift.vsd, rift.layers, 1) == ovr.ovrSuccess)
 	end
-}, {
-	__index = ovr
-}
-)
+	return rift
+end
+
+--- Clean up all data used by LibOVR.
+-- Call this when shutting down your program.
+-- @param rift
+function ret.shutdown(rift)
+	if type(rift) == "table" then
+		if rift.hmd then
+			ovr.ovrHmd_Destroy(rift.hmd)
+			rift.hmd = nil
+			rift.layer = nil
+			rift.fov = nil
+			print("Shutdown HMD")
+		end
+		ovr.ovr_Shutdown()
+		rift = nil
+		print("Shutdown LibOVR")
+	end
+end
+
+--- Draw a mirror of what is displaying on the Rift.
+-- Used to view what is happening on the headset on your monitor.
+--
+-- Note: Blits directly to the window.
+-- @param rift
+function ret.draw_mirror(rift)
+	if not rift.mirror_texture then
+		return
+	end
+	-- Blit mirror texture to back buffer
+	gl.BindFramebuffer(GL.READ_FRAMEBUFFER, rift.mirror_fbo[0])
+	gl.BindFramebuffer(GL.DRAW_FRAMEBUFFER, 0)
+	local w = rift.mirror_texture[0].OGL.Header.TextureSize.w
+	local h = rift.mirror_texture[0].OGL.Header.TextureSize.h
+	gl.BlitFramebuffer(0, h, w, 0, 0, 0, w, h, GL.COLOR_BUFFER_BIT, GL.NEAREST)
+	gl.BindFramebuffer(GL.READ_FRAMEBUFFER, 0)
+end
+
+--- Create a projection matrix appropriate for HMD usage.
+-- Convenience function.
+--
+-- Shortcut for `cpml.mat4():hmd_perspective(rift.fov[eye], near, far, false, false)`.
+-- @param rift
+-- @param eye eye index
+function ret.projection(rift, eye)
+	local cpml = require "cpml"
+	local fov = assert(rift.fov[eye])
+	return cpml.mat4():hmd_perspective(fov, 0.01, 10000, false, false)
+end
+
+--- Iterator for processing each view.
+-- You should draw the same thing for each eye, just offset with the pose.
+-- Usage:
+-- 	for eye, pose in rift:eyes() do
+-- 		-- eye is a number, pose is an orientation and a position.
+-- 		-- Usually used like this (ugly! may be cleaned up later).
+-- 		-- cpml.mat4():rotate(pose.orientation:conjugate()):translate(-pose.position)
+-- 		draw(eye, pose)
+-- 	end
+-- This function takes care of frame timings and per-eye render setup for you.
+-- @param rift
+function ret.eyes(rift)
+	if not rift or not rift.hmd then
+		return nil
+	end
+
+	local cpml = require "cpml"
+	local eye = -1
+
+	local ft = ovr.ovrHmd_GetFrameTiming(rift.hmd, 0)
+	local ts = ovr.ovrHmd_GetTrackingState(rift.hmd, ft.DisplayMidpointSeconds)
+
+	if bit.band(ts.StatusFlags, bit.bor(ovr.ovrStatus_OrientationTracked, ovr.ovrStatus_PositionTracked)) ~= 0 then
+		local eye_poses = ffi.new("ovrPosef[?]", 2)
+		ovr.ovr_CalcEyePoses(ts.HeadPose.ThePose, rift.eye_offsets, eye_poses)
+
+		rift.layer.RenderPose[0] = eye_poses[0]
+		rift.layer.RenderPose[1] = eye_poses[1]
+	end
+
+	local idx = ft.AppFrameIndex % 2
+
+	local closure = function()
+		if eye >= 1 then
+			local w, h = love.graphics.getDimensions()
+
+			gl.FramebufferTexture2D(GL.FRAMEBUFFER, GL.COLOR_ATTACHMENT0, GL.TEXTURE_2D, 0, 0)
+			gl.FramebufferTexture2D(GL.FRAMEBUFFER, GL.DEPTH_ATTACHMENT, GL.TEXTURE_2D, 0, 0)
+
+			gl.BindFramebuffer(GL.FRAMEBUFFER, 0)
+			gl.Viewport(0, 0, w, h)
+			gl.Clear(bit.bor(tonumber(GL.COLOR_BUFFER_BIT), tonumber(GL.DEPTH_BUFFER_BIT)))
+
+			return nil
+		else
+			eye = eye + 1
+
+			local pose        = rift.layer.RenderPose[eye]
+			local orientation = cpml.quat(pose.Orientation.x, pose.Orientation.y, pose.Orientation.z, pose.Orientation.w)
+			local position	   = cpml.vec3(pose.Position.x, pose.Position.y, pose.Position.z)
+
+			local texture = {
+				color = rift.textures.color[eye],
+				depth = rift.textures.depth[eye],
+			}
+			texture.color.swaps[0].CurrentIndex = idx
+
+			local fbo = texture.color.fbo
+
+			gl.BindFramebuffer(GL.FRAMEBUFFER, fbo[0])
+			gl.FramebufferTexture2D(GL.FRAMEBUFFER, GL.COLOR_ATTACHMENT0, GL.TEXTURE_2D, texture.color.textures[idx+1], 0)
+			gl.FramebufferTexture2D(GL.FRAMEBUFFER, GL.DEPTH_ATTACHMENT, GL.TEXTURE_2D, texture.depth[0], 0)
+
+			-- Does the GPU support current FBO configuration?
+			local status = gl.CheckFramebufferStatus(GL.FRAMEBUFFER)
+			assert(status == GL.FRAMEBUFFER_COMPLETE)
+
+			gl.Viewport(0, 0, texture.color.size.x, texture.color.size.y)
+			gl.Clear(bit.bor(tonumber(GL.COLOR_BUFFER_BIT), tonumber(GL.DEPTH_BUFFER_BIT)))
+
+			return eye, { orientation = orientation, position = position }
+		end
+	end
+	return closure
+end
+
+--- Submit current frame to Rift.
+-- @param rift
+function ret.submit_frame(rift)
+	assert(ovr.ovrHmd_SubmitFrame(rift.hmd, 0, rift.vsd, rift.layers, 1) == ovr.ovrSuccess)
+end
+
+return setmetatable(ret, { __index = ovr })
