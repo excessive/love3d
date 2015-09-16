@@ -216,6 +216,72 @@ function l3d.set_culling(method)
 	error("Invalid culling method: Parameter must be one of: 'front', 'back' or unspecified")
 end
 
+--- Create a shader without LOVE's preprocessing.
+-- Useful if you need different shader outputs or a later GLSL version.
+-- The shader is still preprocessed for things such as VERTEX and PIXEL, but
+-- you will have to write your own main() function, attributes, etc.
+--
+-- *Warning: This will very likely do bad things for your shader compatibility.*
+-- @param gl_version
+-- @param vc vertex shader code or filename
+-- @param pc pixel shader code or filename
+-- @return shader
+function l3d.new_shader_raw(gl_version, vc, pc)
+	local function is_vc(code)
+		return code:match("#ifdef%s+VERTEX") ~= nil
+	end
+	local function is_pc(code)
+		return code:match("#ifdef%s+PIXEL") ~= nil
+	end
+	local function mk_shader_code(arg1, arg2)
+		local orig = love.graphics._shaderCodeToGLSL
+		-- local lang = "glsl"
+		if (love.graphics.getRendererInfo()) == "OpenGL ES" then
+			error("NYI: Can't into GLES")
+			-- lang = "glsles"
+		end
+		local vc, pc
+		-- as love does
+		if arg1 then
+			-- first arg contains vertex shader code
+			if is_vc(arg1) then vc = arg1 end
+			local ispixel = is_pc(arg1)
+			-- first arg contains pixel shader code
+			if ispixel then pc = arg1 end
+		end
+		if arg2 then
+			-- second arg contains vertex shader code
+			if is_vc(arg2) then vc = arg2 end
+			local ispixel = is_pc(arg2)
+			-- second arg contains pixel shader code
+			if ispixel then pc = arg2 end
+		end
+		-- Later versions of GLSL do this anyways - so let's use GL version.
+		local versions = {
+			["2.1"] = "120", ["3.0"] = "130", ["3.1"] = "140", ["3.2"] = "150",
+			["3.3"] = "330", ["4.0"] = "400", ["4.1"] = "410", ["4.2"] = "420",
+			["4.3"] = "430", ["4.4"] = "440", ["4.5"] = "450",
+		}
+		local fmt = [[%s
+#ifndef GL_ES
+#define lowp
+#define mediump
+#define highp
+#endif
+#pragma optionNV(strict on)
+#define %s
+#line 0
+%s]]
+		local vs = arg1 and string.format(fmt, "#version " .. versions[gl_version], "VERTEX", vc) or nil
+		local ps = arg2 and string.format(fmt, versions[gl_version], "PIXEL", pc) or nil
+		return vs, ps
+	end
+	love.graphics._shaderCodeToGLSL = mk_shader_code
+	local shader = love.graphics.newShader(vc, pc)
+	love.graphics._shaderCodeToGLSL = orig
+	return shader
+end
+
 --- Update the active shader.
 -- Used internally by patched API, update it yourself otherwise.
 -- This is important for l3d.push/pop and update_matrix.
@@ -409,6 +475,88 @@ function l3d.new_canvas(width, height, format, msaa, gen_depth)
 	end
 
 	return canvas
+end
+
+--- Bind a shadow map.
+-- Sets up drawing to a shadow map texture created with l3d.new_shadow_map.
+-- @param map
+function l3d.bind_shadow_map(map)
+	if map then
+		assert(map.shadow_map)
+		love.graphics.setCanvas(map.dummy_canvas)
+		gl.BindFramebuffer(GL.FRAMEBUFFER, map.buffers[0])
+		gl.DrawBuffer(GL.NONE)
+		gl.Viewport(0, 0, map.width, map.height)
+	else
+		gl.DrawBuffer(GL.BACK)
+		--- XXX: This is not a good assumption on ES!
+		-- gl.BindFramebuffer(0)
+		love.graphics.setCanvas()
+	end
+end
+
+--- Bind shadow map to a texture sampler.
+-- @param map
+-- @param shader
+function l3d.bind_shadow_texture(map, shader)
+	-- Throw me a bone here, slime, this sucks.
+	local current = ffi.new("GLuint[1]")
+	gl.GetIntegerv(GL.CURRENT_PROGRAM, current)
+	local loc = gl.GetUniformLocation(current[0], "shadow_texture")
+	gl.ActiveTexture(GL.TEXTURE7)
+	gl.BindTexture(GL.TEXTURE_2D, map.buffers[1])
+	gl.Uniform1i(loc, 7)
+	gl.ActiveTexture(GL.TEXTURE0)
+end
+
+--- Create a new shadow map.
+-- Creates a depth texture and framebuffer to draw to.
+-- @param w shadow map width
+-- @param h shadow map height
+-- @return shadow_map
+function l3d.new_shadow_map(w, h)
+	-- Use a dummy canvas so that we can make LOVE reset the canvas for us.
+	-- ...sneaky sneaky
+	local dummy = love.graphics.newCanvas(1, 1)
+	love.graphics.setCanvas(dummy)
+
+	local buffers = ffi.gc(ffi.new("GLuint[2]"), function(ptr)
+		gl.DeleteFramebuffers(1, ptr)
+		gl.DeleteTextures(1, ptr+1)
+	end)
+
+	gl.GenFramebuffers(1, buffers)
+	gl.BindFramebuffer(GL.FRAMEBUFFER, buffers[0])
+
+	gl.GenTextures(1, buffers+1)
+	gl.BindTexture(GL.TEXTURE_2D, buffers[1])
+	gl.TexImage2D(GL.TEXTURE_2D, 0, GL.DEPTH_COMPONENT24, w, h, 0, GL.DEPTH_COMPONENT, GL.FLOAT, nil)
+	gl.TexParameteri(GL.TEXTURE_2D, GL.TEXTURE_MAG_FILTER, GL.LINEAR)
+	gl.TexParameteri(GL.TEXTURE_2D, GL.TEXTURE_MIN_FILTER, GL.LINEAR)
+	gl.TexParameteri(GL.TEXTURE_2D, GL.TEXTURE_WRAP_S, GL.CLAMP_TO_EDGE)
+	gl.TexParameteri(GL.TEXTURE_2D, GL.TEXTURE_WRAP_T, GL.CLAMP_TO_EDGE)
+
+	gl.TexParameteri(GL.TEXTURE_2D, GL.TEXTURE_COMPARE_MODE, GL.COMPARE_REF_TO_TEXTURE);
+	gl.TexParameteri(GL.TEXTURE_2D, GL.TEXTURE_COMPARE_FUNC, GL.LEQUAL);
+	-- gl.TexParameteri(GL.TEXTURE_2D, GL.DEPTH_TEXTURE_MODE, GL.INTENSITY);
+	gl.FramebufferTexture(GL.FRAMEBUFFER, GL.DEPTH_ATTACHMENT, buffers[1], 0)
+
+	gl.DrawBuffer(GL.NONE)
+
+	if gl.CheckFramebufferStatus(GL.FRAMEBUFFER) ~= GL.FRAMEBUFFER_COMPLETE then
+		l3d.bind_shadow_map()
+		return false
+	end
+
+	l3d.bind_shadow_map()
+
+	return {
+		shadow_map   = true,
+		buffers      = buffers,
+		dummy_canvas = dummy,
+		width        = w,
+		height       = h
+	}
 end
 
 --[[
