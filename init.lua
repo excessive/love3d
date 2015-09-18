@@ -234,7 +234,6 @@ function l3d.new_shader_raw(gl_version, vc, pc)
 		return code:match("#ifdef%s+PIXEL") ~= nil
 	end
 	local function mk_shader_code(arg1, arg2)
-		local orig = love.graphics._shaderCodeToGLSL
 		-- local lang = "glsl"
 		if (love.graphics.getRendererInfo()) == "OpenGL ES" then
 			error("NYI: Can't into GLES")
@@ -276,6 +275,7 @@ function l3d.new_shader_raw(gl_version, vc, pc)
 		local ps = arg2 and string.format(fmt, versions[gl_version], "PIXEL", pc) or nil
 		return vs, ps
 	end
+	local orig = love.graphics._shaderCodeToGLSL
 	love.graphics._shaderCodeToGLSL = mk_shader_code
 	local shader = love.graphics.newShader(vc, pc)
 	love.graphics._shaderCodeToGLSL = orig
