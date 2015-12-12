@@ -654,7 +654,7 @@ function l3d.patch(automatic_transforms)
 		if type(r) == "number" then
 			orig.rotate(r)
 		end
-		l3d.rotate(r, axis)
+		l3d.rotate(r, axis or { 0, 0, 1 })
 		update()
 	end
 	--- See l3d.scale.
