@@ -483,15 +483,15 @@ end
 function l3d.bind_shadow_map(map)
 	if map then
 		assert(map.shadow_map)
+		gl.DrawBuffer(GL.NONE)
 		love.graphics.setCanvas(map.dummy_canvas)
 		gl.BindFramebuffer(GL.FRAMEBUFFER, map.buffers[0])
-		gl.DrawBuffer(GL.NONE)
 		gl.Viewport(0, 0, map.width, map.height)
 	else
-		gl.DrawBuffer(GL.BACK)
 		--- XXX: This is not a good assumption on ES!
 		-- gl.BindFramebuffer(0)
 		love.graphics.setCanvas()
+		gl.DrawBuffer(GL.BACK)
 	end
 end
 
@@ -525,23 +525,23 @@ function l3d.new_shadow_map(w, h)
 		gl.DeleteTextures(1, ptr+1)
 	end)
 
-	gl.GenFramebuffers(1, buffers)
-	gl.BindFramebuffer(GL.FRAMEBUFFER, buffers[0])
-
 	gl.GenTextures(1, buffers+1)
 	gl.BindTexture(GL.TEXTURE_2D, buffers[1])
-	gl.TexImage2D(GL.TEXTURE_2D, 0, GL.DEPTH_COMPONENT24, w, h, 0, GL.DEPTH_COMPONENT, GL.FLOAT, nil)
 	gl.TexParameteri(GL.TEXTURE_2D, GL.TEXTURE_MAG_FILTER, GL.LINEAR)
 	gl.TexParameteri(GL.TEXTURE_2D, GL.TEXTURE_MIN_FILTER, GL.LINEAR)
 	gl.TexParameteri(GL.TEXTURE_2D, GL.TEXTURE_WRAP_S, GL.CLAMP_TO_EDGE)
 	gl.TexParameteri(GL.TEXTURE_2D, GL.TEXTURE_WRAP_T, GL.CLAMP_TO_EDGE)
+	gl.TexImage2D(GL.TEXTURE_2D, 0, GL.DEPTH_COMPONENT24, w, h, 0, GL.DEPTH_COMPONENT, GL.FLOAT, nil)
+
+	gl.GenFramebuffers(1, buffers)
+	gl.BindFramebuffer(GL.FRAMEBUFFER, buffers[0])
 
 	gl.TexParameteri(GL.TEXTURE_2D, GL.TEXTURE_COMPARE_MODE, GL.COMPARE_REF_TO_TEXTURE);
 	gl.TexParameteri(GL.TEXTURE_2D, GL.TEXTURE_COMPARE_FUNC, GL.LEQUAL);
-	-- gl.TexParameteri(GL.TEXTURE_2D, GL.DEPTH_TEXTURE_MODE, GL.INTENSITY);
-	gl.FramebufferTexture(GL.FRAMEBUFFER, GL.DEPTH_ATTACHMENT, buffers[1], 0)
+	gl.FramebufferTexture2D(GL.FRAMEBUFFER, GL.DEPTH_ATTACHMENT, GL.TEXTURE_2D, buffers[1], 0)
 
 	gl.DrawBuffer(GL.NONE)
+	gl.ReadBuffer(GL.NONE)
 
 	if gl.CheckFramebufferStatus(GL.FRAMEBUFFER) ~= GL.FRAMEBUFFER_COMPLETE then
 		l3d.bind_shadow_map()
@@ -654,7 +654,7 @@ function l3d.patch(automatic_transforms)
 		if type(r) == "number" then
 			orig.rotate(r)
 		end
-		l3d.rotate(r, axis or { 0, 0, 1 })
+		l3d.rotate(r, axis or cpml.vec3.unit_z)
 		update()
 	end
 	--- See l3d.scale.
