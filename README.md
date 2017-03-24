@@ -14,7 +14,9 @@ Online documentation can be found [here](http://excessive.github.io/love3d/) or 
 
 ## Usage
 ```lua
-require("love3d").import(true)
+local cpml = require "cpml"
+local l3d = require "love3d"
+l3d.import()
 
 function love.load()
   -- we do not yet include a model loader or a shader, sorry!
@@ -24,27 +26,30 @@ end
 
 function love.draw()
   -- setup...
-  love.graphics.setDepthTest("less")
+  l3d.set_depth_test("less")
   love.graphics.setShader(some_shader)
 
   -- ...move into place...
-  love.graphics.translate(0, 10, 0)
-  love.graphics.scale(5, 5, 5)
+  local mtx = cpml.mat4()
+  mtx:translate(mtx, cpml.vec3(0, 10, 0))
+  mtx:scale(mtx, cpml.vec3(5, 5, 5))
+  some_shader:send("u_model", mtx:to_vec4s())
 
   -- ...and draw!
   love.graphics.draw(some_model)
 
   -- reset
   love.graphics.setShader()
-  love.graphics.setDepthTest()
+  l3d.set_depth_test()
 
   -- now it's safe to draw 2D again.
   love.graphics.print(string.format("FPS: %0.2f (%0.4f)", love.timer.getFPS(), love.timer.getAverageDelta()))
 end
 ```
 
-## Todo
+## TODO
 * Include a useful default shader
+* Examples (WIP)
 * Implement love.graphics.shear
 * Add debug functionality:
   * Bounding boxes
