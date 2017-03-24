@@ -397,7 +397,6 @@ local ret = {}
 -- 	rift:shutdown()
 -- @param quality scaling factor for render buffers.
 function ret.init(quality)
-	local cpml = require "cpml"
 	local rift
 	quality = quality or 0.9
 	if ovr.ovr_Initialize(nil) == ovr.ovrSuccess then
@@ -440,6 +439,7 @@ function ret.init(quality)
 				local fbo = ffi.new("GLuint[?]", 1)
 				gl.GenFramebuffers(1, fbo)
 
+				local cpml = require "cpml"
 				return {
 					swaps = swaps,
 					size = cpml.vec2(size.w, size.h),
@@ -619,7 +619,6 @@ function ret.eyes(rift)
 		return nil
 	end
 
-	local cpml = require "cpml"
 	local eye = -1
 
 	local ft = ovr.ovrHmd_GetFrameTiming(rift.hmd, 0)
@@ -650,6 +649,7 @@ function ret.eyes(rift)
 		else
 			eye = eye + 1
 
+			local cpml        = require "cpml"
 			local pose        = rift.layer.RenderPose[eye]
 			local orientation = cpml.quat(pose.Orientation.x, pose.Orientation.y, pose.Orientation.z, pose.Orientation.w)
 			local position	   = cpml.vec3(pose.Position.x, pose.Position.y, pose.Position.z)
