@@ -17,4 +17,4 @@ Online documentation can be found [here](http://excessive.github.io/love3d/) or 
 Examples can be found here: https://github.com/excessive/love3d-demos
 
 ## TODO
-* Convince slime to add depth support to love.
+* ~Convince slime to add depth support to love.~ Depth canvases will be supported in love 0.11, and this will get a lot smaller.
